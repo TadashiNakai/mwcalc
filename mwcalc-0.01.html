@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>MWCALC — 分子量計算機</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    max-width: 760px;
+    margin: 2em auto;
+    padding: 0 1em;
+    line-height: 1.55;
+    color: #222;
+  }
+  h1 { font-size: 1.4em; margin-bottom: 0.6em; }
+  h2 {
+    font-size: 1.05em;
+    margin-top: 2em;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.2em;
+  }
+  input[type=text] {
+    width: 100%;
+    font-size: 1.25em;
+    padding: 0.6em 0.7em;
+    box-sizing: border-box;
+    font-family: ui-monospace, "Consolas", "Menlo", monospace;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+  }
+  input[type=text]:focus { outline: 2px solid #1565c0; border-color: #1565c0; }
+  .examples { margin: 0.6em 0 1em; font-size: 0.85em; color: #555; }
+  .examples button {
+    font-family: ui-monospace, "Consolas", "Menlo", monospace;
+    margin: 2px;
+    padding: 3px 9px;
+    cursor: pointer;
+    border: 1px solid #bbb;
+    background: #f5f5f5;
+    border-radius: 3px;
+  }
+  .examples button:hover { background: #e8e8e8; }
+  .result { margin-top: 1.2em; }
+  .mw {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: #1565c0;
+    line-height: 1.1;
+  }
+  .mw-unit {
+    font-size: 0.45em;
+    color: #666;
+    font-weight: 400;
+    margin-left: 0.3em;
+  }
+  .pretty {
+    font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN",
+                 "Noto Serif JP", "BIZ UDPMincho", serif;
+    font-size: 1.45em;
+    margin-top: 0.7em;
+    color: #222;
+    background: #f9f7f1;
+    padding: 0.55em 0.8em;
+    border-left: 3px solid #c4a052;
+    border-radius: 3px;
+    word-break: break-all;
+  }
+  .pretty-label {
+    color: #999;
+    font-size: 0.55em;
+    font-family: -apple-system, sans-serif;
+    margin-right: 0.7em;
+    vertical-align: 0.2em;
+    letter-spacing: 0.05em;
+  }
+  .normalized {
+    color: #888;
+    font-size: 0.85em;
+    margin-top: 0.5em;
+  }
+  table.summary {
+    border-collapse: collapse;
+    margin-top: 1em;
+    width: 100%;
+    font-size: 0.95em;
+  }
+  table.summary th, table.summary td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #ddd;
+    text-align: right;
+  }
+  table.summary th { background: #f0f0f0; }
+  table.summary th:first-child, table.summary td:first-child { text-align: left; }
+  table.summary tfoot td {
+    font-weight: 700;
+    border-top: 2px solid #888;
+    border-bottom: none;
+    background: #fafafa;
+  }
+  .trace-section { margin-top: 1.3em; }
+  .trace-label {
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 0.3em;
+  }
+  .trace-step {
+    font-family: ui-monospace, "Consolas", "Menlo", monospace;
+    font-size: 0.92em;
+    margin: 0.4em 0;
+    padding: 0.45em 0.7em;
+    background: #fafafa;
+    border-radius: 3px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+    color: #333;
+  }
+  .trace-step.trace-final {
+    font-weight: 700;
+    color: #1565c0;
+    font-size: 1.05em;
+    background: #eef5fc;
+  }
+  .err {
+    color: #c62828;
+    margin-top: 1em;
+    background: #ffebee;
+    padding: 0.6em 0.8em;
+    border-left: 3px solid #c62828;
+    border-radius: 3px;
+  }
+  .footer {
+    margin-top: 2.5em;
+    color: #555;
+    font-size: 0.85em;
+    border-top: 1px solid #eee;
+    padding-top: 1em;
+  }
+  .footer code { background: #f0f0f0; padding: 0 4px; border-radius: 3px; }
+  .footer ul { padding-left: 1.4em; }
+  .news ul { list-style: none; padding-left: 0; margin-top: 0.4em; }
+  .news li {
+    font-family: ui-monospace, "Consolas", "Menlo", monospace;
+    font-size: 0.9em;
+    color: #555;
+    padding: 3px 0;
+  }
+  .news .ver-date {
+    color: #888;
+    margin-right: 1.2em;
+    display: inline-block;
+    min-width: 8em;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #ddd; background: #1c1c1c; }
+    input[type=text] { background: #2a2a2a; color: #eee; border-color: #555; }
+    .examples button { background: #2a2a2a; color: #ddd; border-color: #555; }
+    .examples button:hover { background: #3a3a3a; }
+    .pretty { background: #2a2520; color: #eee; border-left-color: #c4a052; }
+    .pretty-label { color: #888; }
+    table.summary th { background: #2a2a2a; }
+    table.summary th, table.summary td { border-bottom-color: #444; }
+    table.summary tfoot td { background: #252525; border-top-color: #888; }
+    .trace-step { background: #252525; color: #ddd; }
+    .trace-step.trace-final { background: #1a2738; color: #64b5f6; }
+    .err { background: #3a1f20; color: #ff8a80; }
+    .footer { border-top-color: #333; color: #aaa; }
+    .footer code { background: #2a2a2a; }
+    .news li { color: #aaa; }
+    h2 { border-bottom-color: #333; }
+  }
+</style>
+</head>
+<body>
+<h1>MWCALC — 分子量計算機</h1>
+
+<input type="text" id="input" autofocus
+       placeholder="例: H2O, C6H12O6, (NH4)2SO4, CuSO4·5H2O, C₆H₁₂O₆"
+       autocomplete="off" autocapitalize="off" spellcheck="false">
+
+<div class="examples">
+  例:
+  <button data-ex="H2O">H2O</button>
+  <button data-ex="C6H12O6">C6H12O6</button>
+  <button data-ex="C₆H₁₂O₆">C₆H₁₂O₆</button>
+  <button data-ex="(NH4)2SO4">(NH4)2SO4</button>
+  <button data-ex="CuSO4·5H2O">CuSO4·5H2O</button>
+  <button data-ex="Zn(NO3)2(NH2NHCONH2)3">Zn(NO3)2(NH2NHCONH2)3</button>
+  <button data-ex="NaHCO3">NaHCO3</button>
+  <button data-ex="C2H5OH">C2H5OH</button>
+</div>
+
+<div id="result" class="result"></div>
+
+<div class="footer">
+  <strong>対応する記法:</strong>
+  <ul>
+    <li>標準: <code>H2O</code> / <code>C6H12O6</code> / <code>(NH4)2SO4</code></li>
+    <li>下付き数字: <code>C₆H₁₂O₆</code> (₀-₉)</li>
+    <li>上付き数字・電荷記号 (<code>⁰-⁹</code>, <code>⁺</code>, <code>⁻</code>, <code>±</code>) は無視</li>
+    <li>水和物の中点 (<code>·</code>, <code>・</code>, <code>•</code>, <code>⋅</code>) と <code>×</code> は分子区切りとして扱う: <code>CuSO4·5H2O</code></li>
+    <li>大文字小文字混在: <code>h2o</code>, <code>NaCL</code>, <code>cAcO3</code></li>
+    <li>各種括弧: <code>()</code>, <code>[]</code>, <code>{}</code>, <code>（）</code>, <code>〔〕</code></li>
+    <li>全角数字 <code>０-９</code></li>
+    <li>複数分子の連結 (<code>+</code>): <code>NaCl + 2 H2O</code></li>
+    <li>D = 重水素 (2.0141)、T = トリチウム (3.0160) も認識</li>
+  </ul>
+  <strong>注意点 (オリジナル踏襲の挙動):</strong>
+  <ul>
+    <li>大文字+大文字 (例 <code>CO</code>) は炭素+酸素として解釈。コバルトは <code>Co</code> と書く。</li>
+    <li>小文字のみの入力 (例 <code>co</code>, <code>no</code>) は2文字優先で元素照合 (<code>Co</code>=コバルト, <code>No</code>=ノーベリウム)。</li>
+    <li>原子量は <code>MWCALC.DAT</code> (1993年版) 由来。82番 Pb (鉛) はオリジナルの誤記 (Pd) を修正。</li>
+  </ul>
+</div>
+
+<div class="news">
+  <h2>新着情報</h2>
+  <ul>
+    <li><span class="ver-date">2026-04-25</span>ver.0.01 — 原作: T.Nakai (1995, MS-DOS版 / yacc+C) — Web移植版</li>
+  </ul>
+</div>
+
+<script>
+"use strict";
+
+// --- 原子量データ (MWCALC.DAT より, 1993年値) ---
+// 82番 Pb はオリジナルファイルでは "Pd 207.2" と誤記されていたため修正済み。
+const ATOMIC_WEIGHTS = {
+  H: 1.00794,    He: 4.002602,  Li: 6.941,      Be: 9.012182,
+  B: 10.811,     C: 12.011,     N: 14.00674,    O: 15.9994,
+  F: 18.9984032, Ne: 20.1797,   Na: 22.989768,  Mg: 24.3050,
+  Al: 26.981539, Si: 28.0855,   P: 30.973762,   S: 32.066,
+  Cl: 35.4527,   Ar: 39.948,    K: 39.0983,     Ca: 40.078,
+  Sc: 44.955910, Ti: 47.867,    V: 50.9415,     Cr: 51.9961,
+  Mn: 54.93805,  Fe: 55.845,    Co: 58.93320,   Ni: 58.6934,
+  Cu: 63.546,    Zn: 65.39,     Ga: 69.723,     Ge: 72.61,
+  As: 74.92159,  Se: 78.96,     Br: 79.904,     Kr: 83.80,
+  Rb: 85.4678,   Sr: 87.62,     Y: 88.90585,    Zr: 91.224,
+  Nb: 92.90638,  Mo: 95.94,     Tc: 99,         Ru: 101.07,
+  Rh: 102.90550, Pd: 106.42,    Ag: 107.8682,   Cd: 112.411,
+  In: 114.818,   Sn: 118.710,   Sb: 121.760,    Te: 127.60,
+  I: 126.90447,  Xe: 131.29,    Cs: 132.90543,  Ba: 137.327,
+  La: 138.9055,  Ce: 140.115,   Pr: 140.90765,  Nd: 144.24,
+  Pm: 145,       Sm: 150.36,    Eu: 151.965,    Gd: 157.25,
+  Tb: 158.92534, Dy: 162.50,    Ho: 164.93032,  Er: 167.26,
+  Tm: 168.93421, Yb: 173.04,    Lu: 174.967,    Hf: 178.49,
+  Ta: 180.9479,  W: 183.84,     Re: 186.207,    Os: 190.23,
+  Ir: 192.217,   Pt: 195.08,    Au: 196.96654,  Hg: 200.59,
+  Tl: 204.3833,  Pb: 207.2,     Bi: 208.98037,  Po: 210,
+  At: 210,       Rn: 222,       Fr: 223,        Ra: 226,
+  Ac: 227,       Th: 232.0381,  Pa: 231.03588,  U: 238.0289,
+  Np: 237,       Pu: 239,       Am: 243,        Cm: 247,
+  Bk: 247,       Cf: 252,       Es: 252,        Fm: 257,
+  Md: 258,       No: 259,       Lr: 262,
+  // 同位体エイリアス (重水素, トリチウム)
+  D: 2.014101778, T: 3.0160492
+};
+
+// --- 入力正規化 ---
+const SUB = "₀₁₂₃₄₅₆₇₈₉";
+const SUB_DIGITS = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
+const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+const FW  = "０１２３４５６７８９";
+// 分子区切りとして扱う文字 (中黒・乗算記号類)。印刷表示では原文字を保持。
+const SEPARATORS = "+·・⋅•∙×✕⨯";
+
+function normalize(s) {
+  let out = "";
+  for (const ch of s) {
+    let i;
+    if ((i = SUB.indexOf(ch)) >= 0) { out += i; continue; }
+    if ((i = FW.indexOf(ch)) >= 0)  { out += i; continue; }
+    if ((i = SUP.indexOf(ch)) >= 0) { out += i; continue; } // 上付き → 数字
+    if (ch === "（" || ch === "(") { out += "("; continue; }
+    if (ch === "）" || ch === ")") { out += ")"; continue; }
+    if (ch === "｛" || ch === "{" || ch === "〔") { out += "{"; continue; }
+    if (ch === "｝" || ch === "}" || ch === "〕") { out += "}"; continue; }
+    if (ch === "［" || ch === "[") { out += "["; continue; }
+    if (ch === "］" || ch === "]") { out += "]"; continue; }
+    if (ch === "＋") { out += "+"; continue; }
+    if ("⁺⁻±".includes(ch)) { continue; } // 電荷記号は無視
+    out += ch; // 中黒類はそのまま (印刷形式で活かす)
+  }
+  return out;
+}
+
+// --- 字句解析 ---
+function tokenize(s) {
+  const tokens = [];
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (SEPARATORS.includes(c)) {
+      tokens.push({type:"plus", original: c});
+      i++; continue;
+    }
+    if ("([{".includes(c)) { tokens.push({type:"lparen", ch:c}); i++; continue; }
+    if (")]}".includes(c)) { tokens.push({type:"rparen", ch:c}); i++; continue; }
+    if (/\d/.test(c)) {
+      let n = "";
+      while (i < s.length && /\d/.test(s[i])) n += s[i++];
+      tokens.push({type:"num", value: parseInt(n, 10)});
+      continue;
+    }
+    if (/[A-Za-z]/.test(c)) {
+      const c2 = s[i+1];
+      let sym;
+      // 大文字+大文字 は単一文字×2 (近代化学表記の慣習: CO = C+O)
+      if (/[A-Z]/.test(c) && c2 && /[A-Z]/.test(c2)) {
+        sym = c;
+        i += 1;
+      } else if (c2 && /[A-Za-z]/.test(c2)) {
+        const cand = c.toUpperCase() + c2.toLowerCase();
+        if (Object.prototype.hasOwnProperty.call(ATOMIC_WEIGHTS, cand)) {
+          sym = cand;
+          i += 2;
+        } else {
+          sym = c.toUpperCase();
+          i += 1;
+        }
+      } else {
+        sym = c.toUpperCase();
+        i += 1;
+      }
+      tokens.push({type:"elem", symbol: sym});
+      continue;
+    }
+    throw new Error(`予期しない文字: "${c}"`);
+  }
+  return tokens;
+}
+
+// --- 構文解析 (AST) ---
+//   formula  := mole ( '+' mole )*
+//   mole     := num? body            ; mole.mult * Σ body
+//   body     := ( elem num? | '(' body ')' num? )*
+//
+//   AST item の種類:
+//     atom  : { kind:'atom',  sym, count }
+//     group : { kind:'group', body:Item[], count }
+//     value : { kind:'value', val, count }   ← 縮約後に使う
+function parseAST(tokens) {
+  let i = 0;
+
+  function parseBody() {
+    const items = [];
+    while (i < tokens.length) {
+      const t = tokens[i];
+      if (t.type === "plus" || t.type === "rparen") break;
+      if (t.type === "elem") {
+        i++;
+        let n = 1;
+        if (tokens[i] && tokens[i].type === "num") { n = tokens[i].value; i++; }
+        items.push({ kind: "atom", sym: t.symbol, count: n });
+      } else if (t.type === "lparen") {
+        i++;
+        const sub = parseBody();
+        if (!tokens[i] || tokens[i].type !== "rparen") {
+          throw new Error("括弧が閉じていません");
+        }
+        i++;
+        let n = 1;
+        if (tokens[i] && tokens[i].type === "num") { n = tokens[i].value; i++; }
+        items.push({ kind: "group", body: sub, count: n });
+      } else if (t.type === "num") {
+        throw new Error(`数字の位置が不正です: ${t.value}`);
+      } else {
+        break;
+      }
+    }
+    return items;
+  }
+
+  const moles = [];
+  let first = true;
+  while (i < tokens.length) {
+    if (!first) {
+      if (tokens[i].type !== "plus") {
+        throw new Error("'+' が必要です");
+      }
+      i++;
+    }
+    first = false;
+    if (i >= tokens.length) break;
+    let mult = 1;
+    if (tokens[i].type === "num") { mult = tokens[i].value; i++; }
+    if (i >= tokens.length) break;
+    const body = parseBody();
+    moles.push({ mult, body });
+  }
+  return moles;
+}
+
+// 全体を Item[] に正規化:
+//   - mole.mult > 1 で body が単独 atom(count=1) なら count に畳み込む
+//   - それ以外で mult > 1 なら body 全体を group に包む
+//   - 全 mole の body を結合して 1 つの Item[] にする
+function flattenMoles(moles) {
+  const items = [];
+  for (const m of moles) {
+    if (m.mult === 1) {
+      items.push(...m.body);
+    } else if (m.body.length === 1 && m.body[0].kind === "atom" && m.body[0].count === 1) {
+      items.push({ kind: "atom", sym: m.body[0].sym, count: m.mult });
+    } else {
+      items.push({ kind: "group", body: m.body, count: m.mult });
+    }
+  }
+  return items;
+}
+
+// 元素ごとの個数を集計 (内訳テーブル用)
+function aggregateCounts(items, mult = 1, counts = {}) {
+  for (const it of items) {
+    if (it.kind === "atom") {
+      counts[it.sym] = (counts[it.sym] || 0) + mult * it.count;
+    } else if (it.kind === "group") {
+      aggregateCounts(it.body, mult * it.count, counts);
+    } else if (it.kind === "value") {
+      // 通常は集計時に value はないが念のため
+    }
+  }
+  return counts;
+}
+
+// --- 途中式の構築 ---
+function hasGroup(items) {
+  for (const it of items) if (it.kind === "group") return true;
+  return false;
+}
+
+function sumItems(items) {
+  let s = 0;
+  for (const it of items) {
+    if (it.kind === "atom") s += ATOMIC_WEIGHTS[it.sym] * it.count;
+    else if (it.kind === "value") s += it.val * it.count;
+    else if (it.kind === "group") s += sumItems(it.body) * it.count;
+  }
+  return s;
+}
+
+// 最も内側 (= body に group を含まない) の group を一斉に評価して value に置き換える
+function reduceInnermost(items) {
+  return items.map(it => {
+    if (it.kind === "group") {
+      if (hasGroup(it.body)) {
+        return { kind: "group", body: reduceInnermost(it.body), count: it.count };
+      }
+      return { kind: "value", val: sumItems(it.body), count: it.count };
+    }
+    return it;
+  });
+}
+
+function fmtNum(v) {
+  if (Math.abs(v) < 1e-12) return "0";
+  if (Number.isInteger(v)) return String(v);
+  // 浮動小数点ノイズ除去のため 1e8 桁で丸めた上で文字列化
+  const r = Math.round(v * 1e8) / 1e8;
+  return Number.isInteger(r) ? String(r) : String(r);
+}
+
+function renderItem(it) {
+  if (it.kind === "atom") {
+    const w = ATOMIC_WEIGHTS[it.sym];
+    return it.count === 1 ? String(w) : `${w} * ${it.count}`;
+  }
+  if (it.kind === "value") {
+    return it.count === 1 ? fmtNum(it.val) : `${fmtNum(it.val)} * ${it.count}`;
+  }
+  if (it.kind === "group") {
+    const inner = it.body.map(renderItem).join(" + ");
+    return it.count === 1 ? `(${inner})` : `(${inner}) * ${it.count}`;
+  }
+  return "";
+}
+
+function renderItems(items) {
+  return items.map(renderItem).join(" + ");
+}
+
+function buildTrace(items) {
+  const lines = [];
+  let cur = items;
+  lines.push(renderItems(cur));
+  while (hasGroup(cur)) {
+    cur = reduceInnermost(cur);
+    lines.push(renderItems(cur));
+  }
+  const finalStr = fmtNum(sumItems(cur));
+  if (lines[lines.length - 1] !== finalStr) {
+    lines.push(finalStr);
+  }
+  return lines;
+}
+
+// --- 印刷形式変換 ---
+// 元素直後・閉じ括弧直後の数値を下付き、それ以外 (係数) は通常字。
+// 数値が 1 のときは省略。分子区切りは入力文字を保持 (· や × はそのまま、+ は前後にスペース)。
+function toSubscript(n) {
+  return String(n).split("").map(c => /\d/.test(c) ? SUB_DIGITS[+c] : c).join("");
+}
+
+function prettyPrint(tokens) {
+  let out = "";
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.type === "elem") {
+      out += t.symbol;
+    } else if (t.type === "num") {
+      const prev = tokens[i - 1];
+      const isSubscript = prev && (prev.type === "elem" || prev.type === "rparen");
+      if (t.value === 1) continue; // 1 は表示しない (慣例)
+      out += isSubscript ? toSubscript(t.value) : String(t.value);
+    } else if (t.type === "plus") {
+      const ch = t.original;
+      out += (ch === "+") ? " + " : ch;
+    } else if (t.type === "lparen" || t.type === "rparen") {
+      out += t.ch;
+    }
+  }
+  return out;
+}
+
+// --- 計算 ---
+function calc(input) {
+  const norm = normalize(input);
+  const tokens = tokenize(norm);
+  const moles = parseAST(tokens);
+  const items = flattenMoles(moles);
+  const counts = aggregateCounts(items);
+
+  // 未知の元素チェック
+  for (const sym in counts) {
+    if (ATOMIC_WEIGHTS[sym] === undefined) {
+      throw new Error(`未知の元素: ${sym}`);
+    }
+  }
+
+  const order = Object.keys(ATOMIC_WEIGHTS);
+  const orderIdx = {};
+  order.forEach((k, idx) => { orderIdx[k] = idx; });
+
+  const symbols = Object.keys(counts).sort(
+    (a, b) => (orderIdx[a] ?? 9999) - (orderIdx[b] ?? 9999)
+  );
+
+  let mw = 0;
+  const rows = [];
+  for (const sym of symbols) {
+    const w = ATOMIC_WEIGHTS[sym];
+    const n = counts[sym];
+    const sub = w * n;
+    rows.push({sym, n, w, sub});
+    mw += sub;
+  }
+
+  const trace = items.length > 0 ? buildTrace(items) : [];
+
+  return {mw, rows, normalized: norm, tokens, pretty: prettyPrint(tokens), trace};
+}
+
+// --- UI ---
+const $input = document.getElementById("input");
+const $result = document.getElementById("result");
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  }[c]));
+}
+
+function fmt(v, digits = 4) {
+  return Number(v).toFixed(digits);
+}
+
+function renderTrace(traceLines) {
+  // 入力構造を保ったまま、最も内側のカッコから順に評価する途中式を縦に並べる。
+  // 例: Zn(NO3)2(NH2NHCONH2)3 では
+  //   1) 65.39 + (14.00674 + 15.9994 * 3) * 2 + (14.00674 + ... + 1.00794 * 2) * 3
+  //   2) 65.39 + 62.00494 * 2 + 75.07032 * 3
+  //   3) 414.61084
+  if (!traceLines || traceLines.length === 0) return "";
+  let html = '<div class="trace-section">';
+  html += '<div class="trace-label">途中式:</div>';
+  for (let i = 0; i < traceLines.length; i++) {
+    const isFinal = (i === traceLines.length - 1) && traceLines.length > 1;
+    const cls = isFinal ? "trace-step trace-final" : "trace-step";
+    html += `<div class="${cls}">${escapeHtml(traceLines[i])}</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function render() {
+  const v = $input.value.trim();
+  if (!v) { $result.innerHTML = ""; return; }
+
+  let r;
+  try {
+    r = calc(v);
+  } catch (e) {
+    $result.innerHTML = `<div class="err">エラー: ${escapeHtml(e.message)}</div>`;
+    return;
+  }
+  if (r.rows.length === 0) {
+    $result.innerHTML = `<div class="err">元素が見つかりません</div>`;
+    return;
+  }
+
+  let html = "";
+
+  // (1) 大きな分子量
+  html += `<div class="mw">${fmt(r.mw)}<span class="mw-unit">g/mol</span></div>`;
+
+  // (2) 印刷形式 — 毎回表示
+  html += `<div class="pretty">
+    <span class="pretty-label">印刷形式</span>${escapeHtml(r.pretty)}
+  </div>`;
+
+  // (3) 正規化後の入力 — 入力と異なる時だけ
+  if (r.normalized !== v) {
+    html += `<div class="normalized">正規化後の入力: <code>${escapeHtml(r.normalized)}</code></div>`;
+  }
+
+  // (4) 元素ごとの内訳 (表)
+  html += '<table class="summary"><thead><tr>';
+  html += '<th>元素</th><th>個数</th><th>原子量</th><th>小計</th>';
+  html += '</tr></thead><tbody>';
+  for (const row of r.rows) {
+    html += `<tr>
+      <td>${escapeHtml(row.sym)}</td>
+      <td>${row.n}</td>
+      <td>${row.w}</td>
+      <td>${fmt(row.sub)}</td>
+    </tr>`;
+  }
+  html += `</tbody><tfoot><tr>
+    <td colspan="3">合計</td><td>${fmt(r.mw)}</td>
+  </tr></tfoot></table>`;
+
+  // (5) 途中式 — 入力構造に沿って内側のカッコから段階的に縮約
+  html += renderTrace(r.trace);
+
+  $result.innerHTML = html;
+}
+
+$input.addEventListener("input", render);
+
+document.querySelectorAll(".examples button").forEach(b => {
+  b.addEventListener("click", () => {
+    $input.value = b.dataset.ex;
+    render();
+    $input.focus();
+  });
+});
+
+// 初期表示
+$input.value = "H2O";
+render();
+</script>
+</body>
+</html>
