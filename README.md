@@ -1,2 +1,73 @@
-# mwcalc
-MWCALC — Molecular Weight Calculator. Originally developed for MS-DOS in 1995, now revived as a web application. Calculates molecular weights for complex formulas using the latest IUPAC 2024 atomic weights.
+# MWCALC
+
+**周期表クリック対応の分子量計算機**
+
+[![Version](https://img.shields.io/badge/version-0.02-blue)](https://tools.nakaix.com/mwcalc/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+---
+
+## 概要
+
+[MWCALC](https://tools.nakaix.com/mwcalc/) は、1995年に MS-DOS 向けに作成した分子量計算機（yacc+C実装）のブラウザ移植版です。
+
+化学式を入力するだけでリアルタイムに分子量を計算します。ver.0.02 では全118元素の周期表を搭載し、元素をクリックするだけで化学式を組み立てられるようになりました。計算の途中式を段階的に表示する機能は、括弧の中から順に展開される計算過程を可視化し、化学初学者の学習にも役立ちます。
+
+すべての処理はブラウザ上で完結し、データはサーバーに送信されません。
+
+---
+
+## 機能
+
+- **周期表からのワンクリック入力** — 全118元素をクリックしてカーソル位置に元素記号を挿入
+- **連続クリックで数を自動加算** — 同じ元素を連続クリックすると H → H2 → H3 と数が増える
+- **カーソル位置インテリジェント対応** — `H2O` の `2` と `O` の間にカーソルがある状態で H をクリックすると `H3O` に
+- **途中式の表示** — 括弧の内側から順に展開される計算過程を段階的に表示
+- **元素別内訳** — 元素ごとの個数・原子量・小計を一覧で表示
+- **多形式の数字・括弧に対応** — 下付き数字（₀-₉）、全角数字（０-９）、各種括弧（`()` `[]` `{}` `（）` `〔〕`）
+- **水和物の中点対応** — `CuSO4·5H2O` などの中黒（`·` `・` `⋅` `×`）を分子区切りとして処理
+- **複数分子の連結** — `NaCl + 2 H2O` のように `+` で複数の分子を結合
+- **大文字小文字混在入力** — `h2o`、`NaCL`、`cAcO3` なども正規化して処理
+- **IUPAC 2024版原子量** — Gd, Lu, Zr は2024年改定値。104番以降の合成元素（Rf〜Og）も収録
+- **ダーク / ライトモード** — システム設定に自動追従
+- **完全ローカル処理** — データ送信なし、外部ライブラリなし、オフライン動作
+
+---
+
+## 使い方
+
+1. 周期表の元素をクリック、またはテキストボックスに化学式を直接入力する
+2. 入力と同時にリアルタイムで分子量が表示される（Enter は不要）
+3. 結果は印刷形式・元素別内訳・途中式の順に表示される
+
+---
+
+## ファイル構成
+
+```
+index.html           現行バージョン（ver.0.02）
+mwcalc-0.01.html     ver.0.01 アーカイブ
+mwcalc-0.02.html     ver.0.02 アーカイブ
+```
+
+単一の HTML ファイルで完結しています。ダウンロードしてブラウザで開くだけで動作します。
+
+---
+
+## 更新履歴
+
+| バージョン | 日付 | 内容 |
+|---|---|---|
+| ver.0.02 | 2026-04-26 | 周期表追加、カーソル位置対応入力、IUPAC 2024版原子量採用 |
+| ver.0.01 | 2026-04-25 | 公開 — 原作 (1995, MS-DOS版 / yacc+C) のブラウザ移植版 |
+
+---
+
+## 関連プロジェクト
+
+- [fuseji《ふせじ》](https://github.com/TadashiNakai/fuseji) — 個人情報マスキングツール（同作者）
+- [rifff《ﾘｭﾌﾌ》](https://github.com/TadashiNakai/rifff) — リッチテキスト対応の差分比較ツール（同作者）
+
+---
+
+Concept & Design: [@TadashiNakai](https://x.com/TadashiNakai) / Implementation: Claude (Anthropic)
