@@ -2,7 +2,7 @@
 
 **周期表クリック対応の分子量計算機**
 
-[![Version](https://img.shields.io/badge/version-0.05-blue)](https://tools.nakaix.com/mwcalc/)
+[![Version](https://img.shields.io/badge/version-0.06-blue)](https://tools.nakaix.com/mwcalc/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -47,12 +47,13 @@
 ## ファイル構成
 
 ```
-index.html           現行バージョン（ver.0.05）
+index.html           現行バージョン（ver.0.06）
 mwcalc-0.01.html     ver.0.01 アーカイブ
 mwcalc-0.02.html     ver.0.02 アーカイブ
 mwcalc-0.03.html     ver.0.03 アーカイブ
 mwcalc-0.04.html     ver.0.04 アーカイブ
 mwcalc-0.05.html     ver.0.05 アーカイブ
+mwcalc-0.06.html     ver.0.06 アーカイブ
 ```
 
 単一の HTML ファイルで完結しています。ダウンロードしてブラウザで開くだけで動作します。
@@ -63,6 +64,7 @@ mwcalc-0.05.html     ver.0.05 アーカイブ
 
 | バージョン | 日付 | 内容 |
 |---|---|---|
+| ver.0.06 | 2026-05-04 | 元素記号は正式表記必須に変更（小文字始まりはエラー）、周期表データのSingle Source of Truth化、innerHTML経由のセル描画を撤廃、プリセット文字種検証の強化 |
 | ver.0.05 | 2026-04-30 | アクセシビリティ対応（ARIA属性・キーボード操作）、ランタノイド／アクチノイドのグループメニュー、テンキーからの周期表ポップアップ、タブ行に「…」メニュー追加（全体初期化）、localStorage スキーマ統合・バージョニング、コアロジックへのコメント追加 |
 | ver.0.04 | 2026-04-29 | 登録分子式機能、← ボタン、UI 統一、入力検証強化 |
 | ver.0.03 | 2026-04-28 | テンキー追加（記号モード・数字モード切替、入力履歴表示） |
@@ -73,8 +75,9 @@ mwcalc-0.05.html     ver.0.05 アーカイブ
 
 ## 関連プロジェクト
 
-- [fuseji《ふせじ》](https://github.com/TadashiNakai/fuseji) — 個人情報マスキングツール（同作者）
-- [rifff《ﾘｭﾌﾌ》](https://github.com/TadashiNakai/rifff) — リッチテキスト対応の差分比較ツール（同作者）
+- [tools.nakaix.com](https://tools.nakaix.com/) — Tadashi Nakai が公開しているツール群のポータル
+- [rifff 《ﾘｭﾌﾌ》](http://tools.nakaix.com/rifff/) — リッチテキスト対応の差分比較ツール（同作者）
+- [fuseji 《ふせじ》](https://fuseji.jp/) — 個人情報マスキングツール（同作者）
 
 ---
 
