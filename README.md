@@ -2,7 +2,7 @@
 
 **周期表クリック対応の分子量計算機**
 
-[![Version](https://img.shields.io/badge/version-0.06-blue)](https://tools.nakaix.com/mwcalc/)
+[![Version](https://img.shields.io/badge/version-0.07-blue)](https://tools.nakaix.com/mwcalc/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -19,6 +19,7 @@
 
 ## 機能
 
+- **URL共有** — 計算結果を `#f=化学式` 形式のURLで共有。共有ボタンからスマホでは共有シート、PCではリンクコピー。ハッシュ形式のためURL中の化学式もサーバーへ送信されない
 - **周期表からのワンクリック入力** — 周期表の全118元素をクリックしてカーソル位置に元素記号を挿入。ランタノイド（57-71）・アクチノイド（89-103）はラベルセルをクリックするとグループメニューが展開
 - **テンキー入力パネル** — 記号モード（履歴・ピン留め元素・括弧・中点）と数字モード（0-9）を切替可能。元素は使用するたびに履歴に追加され、PC では右クリック・スマホでは長押しでピン留め。「周期表」ボタンで周期表グリッドをポップアップ表示
 - **登録分子式機能** — よく使う分子式を☰メニューに登録して呼び出し（H₂O、NaCl、CuSO₄·5H₂O などを10件デフォルト登録、最大20件、削除可）
@@ -47,13 +48,15 @@
 ## ファイル構成
 
 ```
-index.html           現行バージョン（ver.0.06）
+index.html           現行バージョン（ver.0.07）
+ogp.png              OGP画像（SNS共有時のサムネイル）
 mwcalc-0.01.html     ver.0.01 アーカイブ
 mwcalc-0.02.html     ver.0.02 アーカイブ
 mwcalc-0.03.html     ver.0.03 アーカイブ
 mwcalc-0.04.html     ver.0.04 アーカイブ
 mwcalc-0.05.html     ver.0.05 アーカイブ
 mwcalc-0.06.html     ver.0.06 アーカイブ
+mwcalc-0.07.html     ver.0.07 アーカイブ
 ```
 
 単一の HTML ファイルで完結しています。ダウンロードしてブラウザで開くだけで動作します。
@@ -64,6 +67,7 @@ mwcalc-0.06.html     ver.0.06 アーカイブ
 
 | バージョン | 日付 | 内容 |
 |---|---|---|
+| ver.0.07 | 2026-07-07 | URL共有機能（`#f=` 形式・共有ボタン・リンクを開くと化学式を復元）、OGP・構造化データ（JSON-LD）整備、ダークモードCSSの構文修正 |
 | ver.0.06 | 2026-05-04 | 元素記号は正式表記必須に変更（小文字始まりはエラー）、周期表データのSingle Source of Truth化、innerHTML経由のセル描画を撤廃、プリセット文字種検証の強化 |
 | ver.0.05 | 2026-04-30 | アクセシビリティ対応（ARIA属性・キーボード操作）、ランタノイド／アクチノイドのグループメニュー、テンキーからの周期表ポップアップ、タブ行に「…」メニュー追加（全体初期化）、localStorage スキーマ統合・バージョニング、コアロジックへのコメント追加 |
 | ver.0.04 | 2026-04-29 | 登録分子式機能、← ボタン、UI 統一、入力検証強化 |
@@ -81,4 +85,4 @@ mwcalc-0.06.html     ver.0.06 アーカイブ
 
 ---
 
-Concept & Design: [@TadashiNakai](https://x.com/TadashiNakai) / Implementation: Claude (Anthropic)
+Concept & Design: [@TadashiNakai](https://x.com/TadashiNakai)
