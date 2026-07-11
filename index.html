@@ -1,0 +1,3382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>MWCALC — 分子量計算機 v0.16</title>
+<link rel="icon" href="https://tools.nakaix.com/mwcalc/favicon.png" type="image/png">
+<meta name="description" content="化学式を入力するだけでリアルタイムに分子量を計算。周期表の全118元素をクリック入力、途中式の段階表示、元素の質量百分率(組成%)、同位体パターン表示、水和物・下付き数字対応。完全ローカル処理でデータ送信なし。">
+<link rel="canonical" href="https://tools.nakaix.com/mwcalc/">
+<!-- OGP -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tools.nakaix.com/mwcalc/">
+<meta property="og:title" content="MWCALC — 分子量計算機">
+<meta property="og:description" content="化学式を入力するだけでリアルタイムに分子量を計算。周期表クリック入力・途中式表示・完全ローカル処理。">
+<meta property="og:image" content="https://tools.nakaix.com/mwcalc/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="MWCALC — 周期表クリック対応の分子量計算機">
+<meta property="og:site_name" content="tools.nakaix.com">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<!-- 構造化データ (schema.org) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "MWCALC",
+  "alternateName": "MWCALC — 分子量計算機",
+  "url": "https://tools.nakaix.com/mwcalc/",
+  "description": "化学式を入力するだけでリアルタイムに分子量を計算するブラウザツール。周期表の全118元素をクリック入力でき、計算の途中式・元素の質量百分率(組成%)・同位体パターン(質量分析の同位体分布)を表示する。完全ローカル処理でデータ送信なし。",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any",
+  "browserRequirements": "Requires JavaScript",
+  "inLanguage": "ja",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
+  "softwareVersion": "0.16",
+  "dateModified": "2026-07-12",
+  "author": {
+    "@type": "Person",
+    "name": "Tadashi Nakai",
+    "url": "https://x.com/TadashiNakai"
+  }
+}
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    max-width: 760px;
+    margin: 2em auto;
+    padding: 0 1em;
+    line-height: 1.55;
+    color: #222;
+  }
+  h1 { font-size: 1.4em; margin-bottom: 0.6em; }
+  h2 {
+    font-size: 1.05em;
+    margin-top: 2em;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.2em;
+  }
+  input[type=text] {
+    width: 100%;
+    font-size: 1.25em;
+    padding: 0.6em 0.7em;
+    padding-right: 2.8em;
+    box-sizing: border-box;
+    font-family: ui-monospace, "Consolas", "Menlo", monospace;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+  }
+  input[type=text]:focus { outline: 2px solid #1565c0; border-color: #1565c0; }
+  .input-container {
+    position: relative;
+    max-width: 420px;
+  }
+  .clear-button {
+    position: absolute;
+    right: 0.5em;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0.35em 0.6em;
+    background: #f5f5f5;
+    border: 1px solid #bbb;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+    color: #333;
+  }
+  .clear-button:hover { background: #e8e8e8; }
+
+  .result { margin-top: 1.2em; }
+  .mw {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: #1565c0;
+    line-height: 1.1;
+  }
+  .mw-display {
+    margin: 0;
+  }
+  .mw-display-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8em;
+    margin: 0.8em 0;
+    max-width: 420px;
+  }
+  .input-panel-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-left: auto;
+    font-size: 0.92em;
+    color: #555;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .input-panel-tabs.hidden {
+    visibility: hidden;  /* 非表示でも幅を保持してレイアウトを安定させる */
+  }
+  .input-panel-tab {
+    cursor: pointer;
+    padding: 0.2em 0.5em;
+    border-radius: 3px;
+    transition: background 0.12s, color 0.12s;
+    font-weight: 500;
+    background: none;
+    border: none;
+    font-size: inherit;
+    font-family: inherit;
+    color: inherit;
+  }
+  .input-panel-tab:focus-visible { outline: 2px solid #1565c0; outline-offset: 2px; }
+  @media (hover: hover) {
+    .input-panel-tab:hover { background: #e8e8e8; }
+  }
+  .input-panel-tab.active { color: #1565c0; font-weight: 700; }
+  .input-panel-sep {
+    color: #bbb;
+    padding: 0;
+    margin: 0 0.1em;
+  }
+  .mw-unit {
+    font-size: 0.45em;
+    color: #666;
+    font-weight: 400;
+    margin-left: 0.3em;
+  }
+  .pretty {
+    font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN",
+                 "Noto Serif JP", "BIZ UDPMincho", serif;
+    font-size: 1.45em;
+    margin-top: 0.7em;
+    color: #222;
+    background: #f9f7f1;
+    padding: 0.55em 0.8em;
+    border-left: 3px solid #c4a052;
+    border-radius: 3px;
+    word-break: break-all;
+  }
+  .pretty-label {
+    color: #999;
+    font-size: 0.55em;
+    font-family: -apple-system, sans-serif;
+    margin-right: 0.7em;
+    vertical-align: 0.2em;
+    letter-spacing: 0.05em;
+  }
+  .normalized {
+    color: #888;
+    font-size: 0.85em;
+    margin-top: 0.5em;
+  }
+  table.summary {
+    border-collapse: collapse;
+    margin-top: 1em;
+    width: 100%;
+    font-size: 0.95em;
+  }
+  table.summary th, table.summary td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #ddd;
+    text-align: right;
+  }
+  table.summary th { background: #f0f0f0; }
+  table.summary th:first-child, table.summary td:first-child { text-align: left; }
+  table.summary tfoot td {
+    font-weight: 700;
+    border-top: 2px solid #888;
+    border-bottom: none;
+    background: #fafafa;
+  }
+  .trace-section { margin-top: 1.3em; }
+  .trace-label {
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 0.3em;
+  }
+  .trace-step {
+    font-family: ui-monospace, "Consolas", "Menlo", monospace;
+    font-size: 0.92em;
+    margin: 0.4em 0;
+    padding: 0.45em 0.7em;
+    background: #fafafa;
+    border-radius: 3px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+    color: #333;
+  }
+  .trace-step.trace-final {
+    font-weight: 700;
+    color: #1565c0;
+    font-size: 1.05em;
+    background: #eef5fc;
+  }
+  .err {
+    color: #c62828;
+    margin-top: 1em;
+    background: #ffebee;
+    padding: 0.6em 0.8em;
+    border-left: 3px solid #c62828;
+    border-radius: 3px;
+  }
+  .footer {
+    margin-top: 2.5em;
+    color: #555;
+    font-size: 0.85em;
+    border-top: 1px solid #eee;
+    padding-top: 1em;
+  }
+  .footer hr {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 1em 0;
+  }
+  .footer-details {
+    transition: opacity 0.15s ease;
+  }
+  .footer-details.footer-hidden {
+    display: none;
+  }
+  .footer code { background: #f0f0f0; padding: 0 4px; border-radius: 3px; }
+  .footer ul { padding-left: 1.4em; }
+  .footer a {
+    color: #1565c0;
+    text-decoration: none;
+  }
+  .footer li {
+    color: #555;
+    padding: 3px 0;
+  }
+  .footer li a {
+    color: #1565c0;
+    text-decoration: none;
+  }
+  .footer li a:hover { text-decoration: underline; }
+  .footer .ver-date {
+    color: #888;
+    margin-right: 1.2em;
+    display: inline-block;
+    min-width: 8em;
+  }
+  .periodic-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.2em 0;
+    font-size: 0.75em;
+    border: 1px solid #ddd;
+    table-layout: fixed;
+  }
+  .periodic-table th, .periodic-table td {
+    border: 1px solid #ddd;
+    padding: 0;
+    text-align: center;
+    height: 45px;
+    vertical-align: middle;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .period-header { color: #666; font-size: 0.9em; font-weight: 400; display: block; }
+  .element-cell { background-color: #f8f8f8; transition: background-color 0.15s; }
+  @media (hover: hover) {
+    .element-cell:hover { background-color: #e3f2fd; }
+  }
+  .element-cell:focus { outline: none; }
+  .element-cell:focus-visible { outline: 2px solid #1565c0; outline-offset: -2px; }
+  .element-cell.empty { background-color: transparent; border-color: transparent; cursor: auto; }
+
+  /* --- グループ選択メニュー（ランタノイド・アクチノイド） --- */
+  .group-menu {
+    display: none;
+    position: fixed;
+    z-index: 1001;
+    background: #fff;
+    border: 1px solid #bbb;
+    border-radius: 5px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    padding: 3px;
+    max-width: 420px;
+    box-sizing: border-box;
+  }
+  .group-menu.visible { display: block; }
+  .group-menu-table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 0.75em;
+  }
+  .group-menu-item {
+    box-sizing: border-box;
+    border: 1px solid #ddd;
+    height: 45px;
+    cursor: pointer;
+    background: #fff9c4;
+    text-align: center;
+    vertical-align: middle;
+    transition: background 0.1s;
+    user-select: none;
+    padding: 0;
+  }
+  .group-menu-item .element-number { display: block; font-size: 0.7em; color: #666; line-height: 1.2; }
+  .group-menu-item .element-symbol { display: block; font-weight: 700; font-size: 1.1em; line-height: 1.2; }
+  @media (hover: hover) {
+    .group-menu-item:hover { background: #e3f2fd; border-color: #1565c0; }
+  }
+  .group-menu-item:focus { outline: none; }
+  .group-menu-item:focus-visible { outline: 2px solid #1565c0; outline-offset: -2px; }
+
+  /* --- 周期表グリッドメニュー（テンキーから呼び出し） --- */
+  .periodic-menu {
+    display: none;
+    position: fixed;
+    z-index: 1002;
+    background: #fff;
+    border: 1px solid #bbb;
+    border-radius: 5px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    padding: 3px;
+    width: 420px;
+    max-width: 95vw;
+    box-sizing: border-box;
+    overflow-x: auto;
+  }
+  .periodic-menu.visible { display: block; }
+  .periodic-menu-table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+    font-size: 0.6em;  /* テンキー幅に収めるため小さめ */
+  }
+  .periodic-menu-table th,
+  .periodic-menu-table td {
+    border: 1px solid #ddd;
+    padding: 0;
+    text-align: center;
+    height: 34px;
+    vertical-align: middle;
+    cursor: pointer;
+    line-height: 1.1;
+  }
+  .periodic-menu-cell { background: #f8f8f8; }
+  .periodic-menu-cell .element-number { display: block; font-size: 0.7em; color: #666; }
+  .periodic-menu-cell .element-symbol { display: block; font-weight: 700; }
+  .periodic-menu-cell.lanthanide { background: #fff9c4; }
+  .periodic-menu-cell.actinide  { background: #ffccbc; }
+  .periodic-menu-cell.empty-cell { background: transparent; border-color: transparent; cursor: default; }
+  .periodic-menu-cell.label-cell { background: #fff9c4; font-size: 0.85em; color: #666; }
+  @media (hover: hover) {
+    .periodic-menu-cell:not(.empty-cell):not(.label-cell):hover { background: #e3f2fd; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .periodic-menu {
+      background: #2a2a2a;
+      border-color: #555;
+    }
+    .periodic-menu-table th,
+    .periodic-menu-table td { border-color: #444; }
+    .periodic-menu-cell { background: #333; color: #eee; }
+    .periodic-menu-cell .element-number { color: #999; }
+    .periodic-menu-cell.lanthanide { background: #4d3300; }
+    .periodic-menu-cell.actinide  { background: #4d2200; }
+    .periodic-menu-cell.label-cell { background: #4d3300; color: #aaa; }
+    @media (hover: hover) {
+      .periodic-menu-cell:not(.empty-cell):not(.label-cell):hover { background: #1a3a52; }
+    }
+  }
+  @media (prefers-color-scheme: dark) {
+    .group-menu-item {
+      background: #4d3300;
+      border-color: #444;
+      color: #ddd;
+    }
+    .group-menu-item .element-number { color: #999; }
+    @media (hover: hover) {
+      .group-menu-item:hover { background: #1a3a52; border-color: #64b5f6; }
+    }
+  }
+  @media (hover: hover) {
+    .element-cell.empty:hover { background-color: transparent; }
+  }
+  .element-cell.lanthanide { background-color: #fff9c4; }
+  .element-cell.actinide { background-color: #ffccbc; }
+  .element-symbol { display: block; font-weight: 700; font-size: 1.1em; line-height: 1.2; }
+  .element-number { display: block; font-size: 0.7em; color: #666; line-height: 1.2; }
+  .periodic-header-container {
+    position: relative;
+  }
+  .periodic-group-numbers {
+    display: grid;
+    grid-template-columns: repeat(18, 1fr);
+    gap: 1px;
+    margin-bottom: 0.3em;
+    font-size: 0.75em;
+    font-weight: 500;
+    color: #333;
+  }
+  .group-number {
+    text-align: center;
+    height: 1.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* --- 周期表 / テンキー 切り替えタブ --- */
+  /* --- テンキー本体 --- */
+  .numpad-container {
+    display: none;
+    margin: 0.5em 0 1em;
+  }
+  .numpad-container.visible { display: block; }
+  .numpad-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    max-width: 420px;
+  }
+  .numpad-btn {
+    box-sizing: border-box;
+    padding: 0;
+    font-size: 1.0em;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid #bbb;
+    border-radius: 5px;
+    background: #f5f5f5;
+    cursor: pointer;
+    transition: background 0.12s;
+    height: 44px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: ui-monospace, "Consolas", "Menlo", monospace;
+  }
+  .numpad-btn:focus { outline: none; }
+  .numpad-btn:focus-visible { outline: 2px solid #1565c0; outline-offset: 1px; }
+  .numpad-btn:active { background: #bbdefb; }
+  .numpad-btn.numpad-elem { background: #f8f8f8; }
+  .numpad-btn.numpad-action {
+    background: #eeeeee;
+    color: #333;
+    font-size: 0.85em;
+    font-weight: 500;
+    font-family: -apple-system, sans-serif;
+  }
+  .numpad-btn.numpad-mode {
+    background: #eeeeee;
+    color: #333;
+    font-size: 0.82em;
+    font-weight: 700;
+    font-family: -apple-system, sans-serif;
+  }
+  .numpad-btn.numpad-empty {
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+  }
+  .numpad-btn.numpad-bs { background: #eeeeee; }
+  .numpad-btn.numpad-enter { background: #e8f5e9; }
+  .numpad-btn.numpad-digit {
+    background: #fafafa;
+  }
+  @media (hover: hover) {
+    .numpad-btn:hover { background: #e3f2fd; }
+    .numpad-btn.numpad-elem:hover { background: #e3f2fd; }
+    .numpad-btn.numpad-action:hover { background: #e0e0e0; }
+    .numpad-btn.numpad-mode:hover { background: #e0e0e0; }
+    .numpad-btn.numpad-empty:hover { background: transparent; }
+    .numpad-btn.numpad-bs:hover { background: #e0e0e0; }
+    .numpad-btn.numpad-enter:hover { background: #c8e6c9; }
+    .numpad-btn.numpad-digit:hover { background: #e3f2fd; }
+  }
+  
+  /* --- メニューボタン --- */
+  .menu-btn {
+    background: none;
+    border: none;
+    font-size: 1.4em;
+    cursor: pointer;
+    padding: 0.2em;
+    color: #555;
+    transition: color 0.12s;
+  }
+  .menu-btn:hover { color: #1565c0; }
+  
+  .menu-dropdown {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 0;
+    min-width: 160px;
+  }
+  .menu-dropdown.visible { display: block; }
+  .menu-item {
+    padding: 0.6em 1em;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    font-size: 0.95em;
+    transition: background 0.1s;
+    color: #333;
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item:hover { background: #f5f5f5; }
+  .menu-item.danger:hover { background: #ffebee; color: #c62828; }
+  
+  @media (prefers-color-scheme: dark) {
+    .menu-btn { color: #aaa; }
+    .menu-btn:hover { color: #64b5f6; }
+    .menu-dropdown {
+      background: #2a2a2a;
+      border-color: #444;
+    }
+    .menu-item {
+      border-bottom-color: #333;
+      color: #ddd;
+    }
+    .menu-item:hover { background: #3a3a3a; }
+    .menu-item.danger:hover { background: #4a1a1a; color: #ff6b6b; }
+    .menu-item-preset span[title="削除"] { color: #666; }
+  }
+  .numpad-btn.numpad-history {
+    background: #e0f2f1;
+    color: #00695c;
+    font-size: 0.82em;
+    font-weight: 700;
+    font-family: -apple-system, sans-serif;
+  }
+  @media (hover: hover) {
+    .numpad-btn.numpad-history:hover { background: #b2dfdb; }
+  }
+  
+  .history-menu {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 5px;
+    max-width: 90vw;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  .history-menu.visible { display: block; }
+  .history-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    min-width: 380px;
+  }
+  .history-menu-item {
+    padding: 0;
+    cursor: pointer;
+    background: #f8f8f8;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-family: ui-monospace, "Consolas", "Menlo", monospace;
+    font-size: 0.95em;
+    font-weight: 700;
+    text-align: center;
+    transition: background 0.1s, border-color 0.1s;
+    user-select: none;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .history-menu-item:hover { background: #e3f2fd; border-color: #1565c0; }
+  .history-menu-empty {
+    grid-column: 1 / -1;
+    padding: 0.8em;
+    text-align: center;
+    color: #999;
+    cursor: default;
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    .history-menu {
+      background: #2a2a2a;
+      border-color: #444;
+      color: #ddd;
+    }
+    .history-menu-item {
+      background: #333;
+      border-color: #444;
+    }
+    .history-menu-item:hover { background: #1a3a52; border-color: #64b5f6; }
+    .history-menu-empty { color: #666; }
+    .numpad-btn.numpad-history {
+      background: #1a3a3a;
+      color: #80cbc4;
+    }
+    @media (hover: hover) {
+      .numpad-btn.numpad-history:hover { background: #1a4d48; }
+    }
+  }  .numpad-btn.numpad-pinned {
+    background: #fff8e1 !important;
+    border-color: #fbc02d !important;
+    position: relative;
+  }
+  .numpad-btn.numpad-pinned::after {
+    content: "📌";
+    position: absolute;
+    top: -2px;
+    right: 2px;
+    font-size: 0.7em;
+  }
+
+
+  @media (prefers-color-scheme: dark) {
+    body { color: #ddd; background: #1c1c1c; }
+    input[type=text] { background: #2a2a2a; color: #eee; border-color: #555; }
+
+    .pretty { background: #2a2520; color: #eee; border-left-color: #c4a052; }
+    .pretty-label { color: #888; }
+    table.summary th { background: #2a2a2a; }
+    table.summary th, table.summary td { border-bottom-color: #444; }
+    table.summary tfoot td { background: #252525; border-top-color: #888; }
+    .trace-step { background: #252525; color: #ddd; }
+    .trace-step.trace-final { background: #1a2738; color: #64b5f6; }
+    .err { background: #3a1f20; color: #ff8a80; }
+    .footer { border-top-color: #333; color: #aaa; }
+    .footer hr { border-top-color: #333; }
+    .footer code { background: #2a2a2a; }
+    h2 { border-bottom-color: #333; }
+    .periodic-table { border-color: #333; }
+    .periodic-table th, .periodic-table td { border-color: #444; background-color: #2a2a2a; color: #eee; }
+    .periodic-table th { background-color: #1c1c1c; }
+    .period-header { color: #aaa; }
+    .element-cell { background-color: #333; }
+    .element-cell:focus { outline: none; }
+    .element-cell:focus-visible { outline: 2px solid #64b5f6; outline-offset: -2px; }
+    .element-cell.empty { background-color: transparent; }
+    .element-cell.lanthanide { background-color: #4d3300; }
+    .element-cell.actinide { background-color: #4d2200; }
+    .element-number { color: #999; }
+    .group-number { color: #aaa; }
+    @media (hover: hover) {
+      .element-cell:hover { background-color: #1a3a52; }
+      .element-cell.empty:hover { background-color: transparent; }
+    }
+    .input-panel-tab.active { color: #64b5f6; }
+    .numpad-btn { background: #2a2a2a; border-color: #555; color: #ddd; }
+    .numpad-btn:active { background: #0d2b40; }
+    .numpad-btn.numpad-elem { background: #333; }
+    .numpad-btn.numpad-action { background: #3a3a3a; color: #ccc; }
+    .numpad-btn.numpad-mode { background: #3a3a3a; color: #ccc; }
+    .numpad-btn.numpad-bs { background: #3a3a3a; }
+    .numpad-btn.numpad-enter { background: #1a3a1a; }
+    .numpad-btn.numpad-digit { background: #252525; }
+    .numpad-btn.numpad-empty { background: transparent; border-color: transparent; }
+    @media (hover: hover) {
+      .input-panel-tab:hover { background: #3a3a3a; }
+      .numpad-btn:hover { background: #1a3a52; }
+      .numpad-btn.numpad-action:hover { background: #444; }
+      .numpad-btn.numpad-mode:hover { background: #444; }
+      .numpad-btn.numpad-bs:hover { background: #444; }
+      .numpad-btn.numpad-enter:hover { background: #2a4d2a; }
+    }
+    .numpad-btn.numpad-pinned {
+      background: #3a3a2a !important;
+      border-color: #8d7d2d !important;
+    }
+
+    .clear-button {
+      background: #2a2a2a;
+      color: #ddd;
+      border-color: #555;
+    }
+    .clear-button:hover {
+      background: #3a3a3a;
+    }
+  }
+
+  /* --- 共有ボタン --- */
+  .share-button {
+    padding: 0.3em 0.8em;
+    background: #f5f5f5;
+    border: 1px solid #bbb;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-family: inherit;
+    color: #333;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .share-button:focus-visible { outline: 2px solid #1565c0; outline-offset: 2px; }
+  @media (hover: hover) {
+    .share-button:not(:disabled):hover { background: #e8e8e8; }
+  }
+  .share-button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .share-feedback {
+    font-size: 0.85em;
+    color: #2e7d32;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  @media (prefers-color-scheme: dark) {
+    .share-button {
+      background: #2a2a2a;
+      color: #ddd;
+      border-color: #555;
+    }
+    @media (hover: hover) {
+      .share-button:not(:disabled):hover { background: #3a3a3a; }
+    }
+    .share-feedback { color: #81c784; }
+  }
+
+  /* --- 同位体パターン --- */
+  /* --- 結果下部のアクション行（共有・画像・同位体パターン） --- */
+  .result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+    margin-top: 1.4em;
+  }
+  .result-actions .share-feedback { margin-left: 0.2em; }
+  .isotope-toggle {
+    padding: 0.45em 1em;
+    background: #1565c0;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-family: inherit;
+  }
+  .isotope-toggle:focus-visible { outline: 2px solid #1565c0; outline-offset: 2px; }
+  @media (hover: hover) {
+    .isotope-toggle:hover { background: #0d47a1; }
+  }
+  .isotope-panel { margin-top: 1em; }
+  .isotope-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em 1.4em;
+    font-size: 0.92em;
+    color: #555;
+    margin-bottom: 0.8em;
+  }
+  .isotope-info b { color: #1565c0; font-weight: 700; }
+  .isotope-canvas-wrap { margin: 0.2em 0 1em; overflow-x: auto; }
+  .isotope-canvas-wrap canvas { display: block; }
+  .isotope-table { margin-top: 0.4em; max-width: 420px; }
+  .isotope-table.sortable th {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .isotope-table.sortable th:focus-visible {
+    outline: 2px solid #1565c0;
+    outline-offset: -2px;
+  }
+  .isotope-table .sort-ind {
+    color: #1565c0;
+    font-size: 0.85em;
+  }
+  @media (prefers-color-scheme: dark) {
+    .isotope-table .sort-ind { color: #64b5f6; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .isotope-toggle { background: #1565c0; color: #fff; }
+    @media (hover: hover) {
+      .isotope-toggle:hover { background: #1976d2; }
+    }
+    .isotope-info { color: #aaa; }
+    .isotope-info b { color: #64b5f6; }
+  }
+</style>
+</head>
+<body>
+<h1>MWCALC — 分子量計算機</h1>
+
+<div class="input-container">
+<input type="text" id="input" autofocus
+       placeholder="例: H2O, C6H12O6, (NH4)2SO4, CuSO4·5H2O, C₆H₁₂O₆"
+       autocomplete="off" autocapitalize="off" spellcheck="false"
+       aria-label="化学式入力">
+<button type="button" class="clear-button" id="clearBtn" aria-label="入力をクリア">✕</button>
+</div>
+
+<div class="mw-display-row">
+  <div id="mw-display" class="mw-display" aria-live="polite" aria-label="分子量">
+    <div class="mw">0.0000<span class="mw-unit">g/mol</span></div>
+  </div>
+  <div class="input-panel-tabs">
+    <button type="button" class="input-panel-tab active" id="tabPeriodic" aria-pressed="true">周期表</button>
+    <span class="input-panel-sep" aria-hidden="true"> </span>
+    <button type="button" class="input-panel-tab" id="tabNumpad" aria-pressed="false">テンキー</button>
+    <span class="input-panel-sep" aria-hidden="true"> </span>
+    <button type="button" class="input-panel-tab" id="tabOverflow" aria-label="その他のメニュー">…</button>
+  </div>
+</div>
+
+<!-- 周期表パネル -->
+<div id="panelPeriodic">
+<div class="periodic-header-container">
+  <div class="periodic-group-numbers" id="groupNumbers"></div>
+  <table class="periodic-table" id="periodicTable"></table>
+</div>
+</div>
+
+<!-- グループ選択メニュー（57-71, 89-103） -->
+<div id="groupMenu" class="group-menu"></div>
+
+<!-- 周期表グリッドメニュー（テンキーから呼び出し） -->
+<div id="periodicMenu" class="periodic-menu"></div>
+
+<!-- テンキーパネル -->
+<div id="panelNumpad" class="numpad-container">
+  <div class="numpad-grid" id="numpadGrid"></div>
+</div>
+
+<!-- 履歴メニュー -->
+<div id="historyMenu" class="history-menu"></div>
+
+<!-- 設定メニュー -->
+<div id="settingsMenu" class="menu-dropdown"></div>
+
+<!-- …メニュー（タブ行） -->
+<div id="overflowMenu" class="menu-dropdown"></div>
+
+<div id="result" class="result"></div>
+
+<div class="footer">
+<div class="footer-details" id="footerDetails">
+  <strong>対応する記法:</strong>
+  <ul>
+    <li>標準: <code>H2O</code> / <code>C6H12O6</code> / <code>(NH4)2SO4</code></li>
+    <li>下付き数字: <code>C₆H₁₂O₆</code> (₀-₉)</li>
+    <li>上付き数字・電荷記号 (<code>⁰-⁹</code>, <code>⁺</code>, <code>⁻</code>, <code>±</code>) は無視</li>
+    <li>水和物の中点 (<code>·</code>, <code>・</code>, <code>•</code>, <code>⋅</code>) と <code>×</code> は分子区切りとして扱う: <code>CuSO4·5H2O</code></li>
+    <li>元素記号は正式表記で入力すること: 1文字元素は大文字（<code>H</code>, <code>C</code>）、2文字元素は大文字+小文字（<code>Na</code>, <code>Ca</code>, <code>Fe</code>）。小文字のみ・大文字のみの入力はエラー</li>
+    <li>各種括弧: <code>()</code>, <code>[]</code>, <code>{}</code>, <code>（）</code>, <code>〔〕</code></li>
+    <li>全角数字 <code>０-９</code></li>
+    <li>複数分子の連結 (<code>+</code>): <code>NaCl + 2 H2O</code></li>
+    <li>D = 重水素 (2.0141)、T = トリチウム (3.0160) も認識</li>
+  </ul>
+  <strong>注意点:</strong>
+  <ul>
+    <li>大文字+大文字 (例 <code>CO</code>) は炭素+酸素として解釈。コバルトは <code>Co</code> と書く。</li>
+  </ul>
+  <strong>原子量について:</strong>
+  <ul>
+    <li>IUPAC 2024版 (CIAAW Standard Atomic Weights) を採用。区間で定義される元素 (H, Li, B, C, N, O, Mg, Si, S, Cl, Ar, Br, Tl, Pb) は慣用値 (conventional atomic weight) を使用。Gd, Lu, Zr は2024年改定値、Pb は放射性同位体の性質を反映。104番以降は最長半減期の同位体に基づく。</li>
+  </ul>
+  <strong>新着情報:</strong>
+  <ul>
+    <li><span class="ver-date">2026-07-12</span><a href="https://tools.nakaix.com/mwcalc/mwcalc-0.16.html">ver.0.16</a> — 同位体パターン表示（棒グラフ＋単同位体質量・平均質量・相対強度／存在比の表）、元素別内訳に質量百分率（組成%）を追加、結果カードの画像保存、標準原子量をCIAAW慣用値に統一</li>
+    <li><span class="ver-date">2026-07-07</span><a href="https://tools.nakaix.com/mwcalc/mwcalc-0.07.html">ver.0.07</a> — URL共有機能（<code>#f=化学式</code> 形式・データ送信なし）、共有ボタン（共有シート／リンクコピー）、OGP・構造化データ整備、ダークモードCSSの構文修正</li>
+    <li><span class="ver-date">2026-05-04</span><a href="https://tools.nakaix.com/mwcalc/mwcalc-0.06.html">ver.0.06</a> — 元素記号は正式表記必須に変更（小文字始まりはエラー）、周期表データのSingle Source of Truth化、innerHTML経由のセル描画を撤廃、プリセット文字種検証の強化</li>
+    <li><span class="ver-date">2026-04-30</span><a href="https://tools.nakaix.com/mwcalc/mwcalc-0.05.html">ver.0.05</a> — ランタノイド等の入力対応、テンキーからの周期表ポップアップ</li>
+    <li><span class="ver-date">2026-04-29</span><a href="https://tools.nakaix.com/mwcalc/mwcalc-0.04.html">ver.0.04</a> — 登録分子式機能、← ボタン、UI 統一、入力検証強化</li>
+    <li><span class="ver-date">2026-04-28</span><a href="https://tools.nakaix.com/mwcalc/mwcalc-0.03.html">ver.0.03</a> — テンキー追加（記号モード・数字モード切り替え、入力履歴表示）</li>
+    <li><span class="ver-date">2026-04-26</span><a href="https://tools.nakaix.com/mwcalc/mwcalc-0.02.html">ver.0.02</a> — 周期表追加、カーソル位置対応入力、IUPAC 2024版原子量採用</li>
+    <li><span class="ver-date">2026-04-25</span><a href="https://tools.nakaix.com/mwcalc/mwcalc-0.01.html">ver.0.01</a> — 原作: Tadashi Nakai (1995, MS-DOS版 / yacc+C) — Web移植版</li>
+  </ul>
+  <hr>
+</div>
+  <a href="https://tools.nakaix.com/mwcalc/" target="_blank">https://tools.nakaix.com/mwcalc/</a> | <a href="https://github.com/TadashiNakai/mwcalc" target="_blank">GitHub</a> | 
+  Concept &amp; Design: <a href="https://x.com/TadashiNakai" target="_blank">@TadashiNakai</a>
+</div>
+
+<script>
+"use strict";
+
+// @@CORE_START — このコメントから @@CORE_END までがテスト可能なコア関数です
+// --- 原子量データ (MWCALC.DAT より, 1993年値) ---
+// 82番 Pb はオリジナルファイルでは "Pd 207.2" と誤記されていたため修正済み。
+const ATOMIC_WEIGHTS = {
+  H: 1.008,      He: 4.002602,  Li: 6.94,       Be: 9.0121831,
+  B: 10.81,      C: 12.011,     N: 14.007,      O: 15.999,
+  F: 18.998403162, Ne: 20.1797,   Na: 22.98976928,  Mg: 24.305,
+  Al: 26.9815384, Si: 28.085,    P: 30.973761998,   S: 32.06,
+  Cl: 35.45,     Ar: 39.95,     K: 39.0983,     Ca: 40.078,
+  Sc: 44.955907, Ti: 47.867,    V: 50.9415,     Cr: 51.9961,
+  Mn: 54.938043, Fe: 55.845,    Co: 58.933194,  Ni: 58.6934,
+  Cu: 63.546,    Zn: 65.38,     Ga: 69.723,     Ge: 72.63,
+  As: 74.921595, Se: 78.971,    Br: 79.904,     Kr: 83.798,
+  Rb: 85.4678,   Sr: 87.62,     Y: 88.905838,   Zr: 91.222,
+  Nb: 92.90637,  Mo: 95.95,     Tc: 98,         Ru: 101.07,
+  Rh: 102.90549, Pd: 106.42,    Ag: 107.8682,   Cd: 112.414,
+  In: 114.818,   Sn: 118.710,   Sb: 121.760,    Te: 127.60,
+  I: 126.90447,  Xe: 131.293,   Cs: 132.90545196, Ba: 137.327,
+  La: 138.90547, Ce: 140.116,   Pr: 140.90766,  Nd: 144.242,
+  Pm: 145,       Sm: 150.36,    Eu: 151.964,    Gd: 157.249,
+  Tb: 158.925354, Dy: 162.500,   Ho: 164.930329, Er: 167.259,
+  Tm: 168.934219, Yb: 173.045,   Lu: 174.96669,  Hf: 178.486,
+  Ta: 180.94788, W: 183.84,     Re: 186.207,    Os: 190.23,
+  Ir: 192.217,   Pt: 195.084,   Au: 196.966570, Hg: 200.592,
+  Tl: 204.38,    Pb: 207.2,     Bi: 208.98040,  Po: 209,
+  At: 210,       Rn: 222,       Fr: 223,        Ra: 226,
+  Ac: 227,       Th: 232.0377,  Pa: 231.03588,  U: 238.02891,
+  Np: 237,       Pu: 239,       Am: 243,        Cm: 247,
+  Bk: 247,       Cf: 252,       Es: 252,        Fm: 257,
+  Md: 258,       No: 259,       Lr: 262,
+  Rf: 267,       Db: 270,       Sg: 271,       Bh: 270,
+  Hs: 277,       Mt: 278,       Ds: 281,       Rg: 282,
+  Cn: 285,       Nh: 286,       Fl: 289,       Mc: 290,
+  Lv: 293,       Ts: 294,       Og: 294,
+  // 同位体エイリアス (重水素, トリチウム)
+  D: 2.014101778, T: 3.0160492
+};
+
+// --- 同位体組成データ (NIST/CIAAW) ---
+// 各元素: [[質量(Da), 存在比(fraction)], ...]。
+// 安定同位体を持たない元素は主要/最長半減期同位体を単一ピーク(1.0)として扱う。
+// 存在比の合計は各元素で 1.0（有効数字の丸め内）。ATOMIC_WEIGHTS とは独立に保持する。
+const ISOTOPES = {
+  H: [[1.007825032,0.999885],[2.014101778,0.000115]],
+  He: [[3.016029319,1.34e-06],[4.002603254,0.999999]],
+  Li: [[6.015122795,0.0759],[7.01600455,0.9241]],
+  Be: [[9.0121822,1]],
+  B: [[10.012937,0.199],[11.0093054,0.801]],
+  C: [[12,0.9893],[13.00335484,0.0107]],
+  N: [[14.003074,0.99636],[15.0001089,0.00364]],
+  O: [[15.99491462,0.99757],[16.9991317,0.00038],[17.999161,0.00205]],
+  F: [[18.99840322,1]],
+  Ne: [[19.99244018,0.9048],[20.99384668,0.0027],[21.99138511,0.0925]],
+  Na: [[22.98976928,1]],
+  Mg: [[23.9850417,0.7899],[24.98583692,0.1],[25.98259293,0.1101]],
+  Al: [[26.98153863,1]],
+  Si: [[27.97692653,0.92223],[28.9764947,0.04685],[29.97377017,0.03092]],
+  P: [[30.97376163,1]],
+  S: [[31.972071,0.9499],[32.97145876,0.0075],[33.9678669,0.0425],[35.96708076,0.0001]],
+  Cl: [[34.96885268,0.7576],[36.96590259,0.2424]],
+  Ar: [[35.96754511,0.003365],[37.9627324,0.000632],[39.96238312,0.996003]],
+  K: [[38.96370668,0.932581],[39.96399848,0.000117],[40.96182576,0.067302]],
+  Ca: [[39.96259098,0.96941],[41.95861801,0.00647],[42.9587666,0.00135],[43.9554818,0.02086],[45.9536926,4e-05],[47.952534,0.00187]],
+  Sc: [[44.9559119,1]],
+  Ti: [[45.9526316,0.0825],[46.9517631,0.0744],[47.9479463,0.7372],[48.94787,0.0541],[49.9447912,0.0518]],
+  V: [[49.9471585,0.0025],[50.9439595,0.9975]],
+  Cr: [[49.9460442,0.04345],[51.9405075,0.83789],[52.9406494,0.09501],[53.9388804,0.02365]],
+  Mn: [[54.9380451,1]],
+  Fe: [[53.9396105,0.05845],[55.9349375,0.91754],[56.935394,0.02119],[57.9332756,0.00282]],
+  Co: [[58.933195,1]],
+  Ni: [[57.9353429,0.680769],[59.9307864,0.262231],[60.931056,0.011399],[61.9283451,0.036345],[63.927966,0.009256]],
+  Cu: [[62.9295975,0.6915],[64.9277895,0.3085]],
+  Zn: [[63.9291422,0.48268],[65.9260334,0.27975],[66.9271273,0.04102],[67.9248442,0.19024],[69.9253193,0.00631]],
+  Ga: [[68.9255736,0.60108],[70.9247013,0.39892]],
+  Ge: [[69.9242474,0.2038],[71.9220758,0.2731],[72.9234589,0.0776],[73.9211778,0.3672],[75.9214026,0.0783]],
+  As: [[74.9215965,1]],
+  Se: [[73.9224764,0.0089],[75.9192136,0.0937],[76.919914,0.0763],[77.9173091,0.2377],[79.9165213,0.4961],[81.9166994,0.0873]],
+  Br: [[78.9183371,0.5069],[80.9162906,0.4931]],
+  Kr: [[77.9203648,0.00355],[79.916379,0.02286],[81.9134836,0.11593],[82.914136,0.115],[83.911507,0.56987],[85.91061073,0.17279]],
+  Rb: [[84.91178974,0.7217],[86.90918053,0.2783]],
+  Sr: [[83.913425,0.0056],[85.9092602,0.0986],[86.9088771,0.07],[87.9056121,0.8258]],
+  Y: [[88.9058483,1]],
+  Zr: [[89.9047044,0.5145],[90.9056458,0.1122],[91.9050408,0.1715],[93.9063152,0.1738],[95.9082734,0.028]],
+  Nb: [[92.9063781,1]],
+  Mo: [[91.906811,0.1477],[93.9050883,0.0923],[94.9058421,0.159],[95.9046795,0.1668],[96.9060215,0.0956],[97.9054082,0.2419],[99.907477,0.0967]],
+  Tc: [[97.907216,1]],
+  Ru: [[95.907598,0.0554],[97.905287,0.0187],[98.9059393,0.1276],[99.9042195,0.126],[100.9055821,0.1706],[101.9043493,0.3155],[103.905433,0.1862]],
+  Rh: [[102.905504,1]],
+  Pd: [[101.905609,0.0102],[103.904036,0.1114],[104.905085,0.2233],[105.903486,0.2733],[107.903892,0.2646],[109.905153,0.1172]],
+  Ag: [[106.905097,0.51839],[108.904752,0.48161]],
+  Cd: [[105.906459,0.0125],[107.904184,0.0089],[109.9030021,0.1249],[110.9041781,0.128],[111.9027578,0.2413],[112.9044017,0.1222],[113.9033585,0.2873],[115.904756,0.0749]],
+  In: [[112.904058,0.0429],[114.903878,0.9571]],
+  Sn: [[111.904818,0.0097],[113.902779,0.0066],[114.903342,0.0034],[115.901741,0.1454],[116.902952,0.0768],[117.901603,0.2422],[118.903308,0.0859],[119.9021947,0.3258],[121.903439,0.0463],[123.9052739,0.0579]],
+  Sb: [[120.9038157,0.5721],[122.904214,0.4279]],
+  Te: [[119.90402,0.0009],[121.9030439,0.0255],[122.90427,0.0089],[123.9028179,0.0474],[124.9044307,0.0707],[125.9033117,0.1884],[127.9044631,0.3174],[129.9062244,0.3408]],
+  I: [[126.904473,1]],
+  Xe: [[123.905893,0.000952],[125.904274,0.00089],[127.9035313,0.019102],[128.9047794,0.264006],[129.903508,0.04071],[130.9050824,0.212324],[131.9041535,0.269086],[133.9053945,0.104357],[135.907219,0.088573]],
+  Cs: [[132.9054519,1]],
+  Ba: [[129.9063208,0.00106],[131.9050613,0.00101],[133.9045084,0.02417],[134.9056886,0.06592],[135.9045759,0.07854],[136.9058274,0.11232],[137.9052472,0.71698]],
+  La: [[137.907112,0.0009],[138.9063533,0.9991]],
+  Ce: [[135.907172,0.00185],[137.905991,0.00251],[139.9054387,0.8845],[141.909244,0.11114]],
+  Pr: [[140.9076528,1]],
+  Nd: [[141.9077233,0.272],[142.9098143,0.122],[143.9100873,0.238],[144.9125736,0.083],[145.9131169,0.172],[147.916893,0.057],[149.920891,0.056]],
+  Pm: [[144.912749,1]],
+  Sm: [[143.911999,0.0307],[146.9148979,0.1499],[147.9148227,0.1124],[148.9171847,0.1382],[149.9172755,0.0738],[151.9197324,0.2675],[153.9222093,0.2275]],
+  Eu: [[150.9198502,0.4781],[152.9212303,0.5219]],
+  Gd: [[151.919791,0.002],[153.9208656,0.0218],[154.922622,0.148],[155.9221227,0.2047],[156.9239601,0.1565],[157.9241039,0.2484],[159.9270541,0.2186]],
+  Tb: [[158.9253468,1]],
+  Dy: [[155.924283,0.00056],[157.924409,0.00095],[159.9251975,0.02329],[160.9269334,0.18889],[161.9267984,0.25475],[162.9287312,0.24896],[163.9291748,0.2826]],
+  Ho: [[164.9303221,1]],
+  Er: [[161.928778,0.00139],[163.9292,0.01601],[165.9302931,0.33503],[166.9320482,0.22869],[167.9323702,0.26978],[169.9354643,0.1491]],
+  Tm: [[168.9342133,1]],
+  Yb: [[167.933897,0.0013],[169.9347618,0.0304],[170.9363258,0.1428],[171.9363815,0.2183],[172.9382108,0.1613],[173.9388621,0.3183],[175.9425717,0.1276]],
+  Lu: [[174.9407718,0.9741],[175.9426863,0.0259]],
+  Hf: [[173.940046,0.0016],[175.9414086,0.0526],[176.9432207,0.186],[177.9436988,0.2728],[178.9458161,0.1362],[179.94655,0.3508]],
+  Ta: [[179.9474648,0.00012],[180.9479958,0.99988]],
+  W: [[179.946704,0.0012],[181.9482042,0.265],[182.950223,0.1431],[183.9509312,0.3064],[185.9543641,0.2843]],
+  Re: [[184.952955,0.374],[186.9557531,0.626]],
+  Os: [[183.9524891,0.0002],[185.9538382,0.0159],[186.9557505,0.0196],[187.9558382,0.1324],[188.9581475,0.1615],[189.958447,0.2626],[191.9614807,0.4078]],
+  Ir: [[190.960594,0.373],[192.9629264,0.627]],
+  Pt: [[189.959932,0.00014],[191.961038,0.00782],[193.9626803,0.32967],[194.9647911,0.33832],[195.9649515,0.25242],[197.967893,0.07163]],
+  Au: [[196.9665687,1]],
+  Hg: [[195.965833,0.0015],[197.966769,0.0997],[198.9682799,0.1687],[199.968326,0.231],[200.9703023,0.1318],[201.970643,0.2986],[203.9734939,0.0687]],
+  Tl: [[202.9723442,0.2952],[204.9744275,0.7048]],
+  Pb: [[203.9730436,0.014],[205.9744653,0.241],[206.9758969,0.221],[207.9766521,0.524]],
+  Bi: [[208.9803987,1]],
+  Po: [[208.9824304,1]],
+  At: [[209.987148,1]],
+  Rn: [[222.0175777,1]],
+  Fr: [[223.0197359,1]],
+  Ra: [[226.0254098,1]],
+  Ac: [[227.0277521,1]],
+  Th: [[232.0380553,1]],
+  Pa: [[231.035884,1]],
+  U: [[234.0409521,5.4e-05],[235.0439299,0.007204],[238.0507882,0.992742]],
+  Np: [[237.0481734,1]],
+  Pu: [[244.064204,1]],
+  Am: [[243.0613811,1]],
+  Cm: [[247.070354,1]],
+  Bk: [[247.070307,1]],
+  Cf: [[251.079587,1]],
+  Es: [[252.08298,1]],
+  Fm: [[257.095105,1]],
+  Md: [[258.098431,1]],
+  No: [[259.10103,1]],
+  Lr: [[262.10963,1]],
+  Rf: [[267.12179,1]],
+  Db: [[268.12567,1]],
+  Sg: [[271.13393,1]],
+  Bh: [[272.13826,1]],
+  Hs: [[270.13429,1]],
+  Mt: [[276.15159,1]],
+  Ds: [[281.16451,1]],
+  Rg: [[280.16514,1]],
+  Cn: [[285.17712,1]],
+  Nh: [[286.18221,1]],
+  Fl: [[289.19042,1]],
+  Mc: [[289.19363,1]],
+  Lv: [[293.20449,1]],
+  Ts: [[293.20824,1]],
+  Og: [[294.21392,1]],
+  D: [[2.014101778,1]],
+  T: [[3.016049278,1]],
+};
+
+// 単同位体（=各元素の最も存在比の高い同位体）の質量を返す
+function principalIsotopeMass(sym) {
+  const iso = ISOTOPES[sym];
+  if (!iso) return ATOMIC_WEIGHTS[sym];  // データ欠落時は平均原子量で代用
+  let best = iso[0];
+  for (const p of iso) if (p[1] > best[1]) best = p;
+  return best[0];
+}
+
+// =====================================================================
+// 同位体パターン計算 — v0.09
+// 各元素の同位体分布を畳み込み（自己畳み込みは二進累乗法）して分子全体の
+// 同位体分布を求める。
+// 分布は「公称質量(整数ノミナル質量)」をキーとし、各キーに確率 p と
+// 確率加重の厳密質量和 m を持つ（代表質量 = m/p）。畳み込みではキー（整数）を
+// 加算し、厳密質量は component の平均質量の和として累積するため、
+// 質量の量子化誤差が原理的に生じない（大分子でもピーク位置が正確）。
+// =====================================================================
+const ISO_PRUNE = 1e-9;               // 基準ピーク比でこの確率未満のピークは枝刈り
+
+function isoPrune(dist) {
+  let max = 0;
+  for (const k in dist) if (dist[k].p > max) max = dist[k].p;
+  if (max === 0) return dist;
+  const thr = max * ISO_PRUNE;
+  const out = {};
+  for (const k in dist) if (dist[k].p >= thr) out[k] = dist[k];
+  return out;
+}
+
+// 2つの分布の畳み込み。各エントリは {p: 確率, m: 確率加重の厳密質量和}。
+function isoConvolve(a, b) {
+  const out = {};
+  for (const ka in a) {
+    const va = a[ka]; const ia = +ka;
+    const meanA = va.m / va.p;
+    for (const kb in b) {
+      const vb = b[kb];
+      const k = ia + (+kb);
+      const p = va.p * vb.p;
+      const mass = meanA + vb.m / vb.p;   // 厳密質量は両成分の平均質量の和
+      if (out[k]) { out[k].p += p; out[k].m += p * mass; }
+      else out[k] = {p: p, m: p * mass};
+    }
+  }
+  return isoPrune(out);
+}
+
+// 単一原子の同位体分布を「公称質量キー」で返す
+function isoSingle(sym) {
+  const iso = ISOTOPES[sym] || [[ATOMIC_WEIGHTS[sym], 1]];
+  const d = {};
+  for (const [m, ab] of iso) {
+    const k = Math.round(m);
+    if (d[k]) { d[k].p += ab; d[k].m += ab * m; }
+    else d[k] = {p: ab, m: ab * m};
+  }
+  return d;
+}
+
+// n 個の同一元素の分布（二進累乗法による自己畳み込み）
+function isoPower(sym, n) {
+  let result = {0: {p: 1, m: 0}};   // 質量0の恒等元
+  let base = isoSingle(sym);
+  while (n > 0) {
+    if (n & 1) result = isoConvolve(result, base);
+    n >>= 1;
+    if (n > 0) base = isoConvolve(base, base);
+  }
+  return result;
+}
+
+// counts: {元素記号: 個数} から同位体パターンを計算して返す。
+// 返り値 { peaks:[{mass, rel, prob}], mono, avg, base } — rel は基準ピーク=100 の相対強度。
+function isotopePattern(counts) {
+  let total = {0: {p: 1, m: 0}};
+  for (const sym in counts) {
+    total = isoConvolve(total, isoPower(sym, counts[sym]));
+  }
+  let baseP = 0;
+  for (const k in total) if (total[k].p > baseP) baseP = total[k].p;
+  const peaks = [];
+  for (const k in total) {
+    const g = total[k];
+    const rel = 100 * g.p / baseP;
+    if (rel >= 0.01) peaks.push({mass: g.m / g.p, rel, prob: g.p});
+  }
+  peaks.sort((a, b) => a.mass - b.mass);
+  // 単同位体質量・平均質量・基準ピーク（counts から厳密に算出）
+  let mono = 0, avg = 0;
+  for (const sym in counts) {
+    mono += principalIsotopeMass(sym) * counts[sym];
+    avg  += ATOMIC_WEIGHTS[sym] * counts[sym];
+  }
+  const base = peaks.reduce((a, b) => (b.rel > a.rel ? b : a), peaks[0]);
+  return {peaks, mono, avg, base: base ? base.mass : mono};
+}
+
+// --- 入力正規化 ---
+const SUB = "₀₁₂₃₄₅₆₇₈₉";
+const SUB_DIGITS = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"];
+const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+const FW  = "０１２３４５６７８９";
+// 分子区切りとして扱う文字 (中黒・乗算記号類)。印刷表示では原文字を保持。
+const SEPARATORS = "+·・⋅•∙×✕⨯";
+
+function normalize(s) {
+  let out = "";
+  for (const ch of s) {
+    let i;
+    if ((i = SUB.indexOf(ch)) >= 0) { out += i; continue; }
+    if ((i = FW.indexOf(ch)) >= 0)  { out += i; continue; }
+    if ((i = SUP.indexOf(ch)) >= 0) { continue; } // 上付き数字・電荷記号は無視
+    if (ch === "（" || ch === "(") { out += "("; continue; }
+    if (ch === "）" || ch === ")") { out += ")"; continue; }
+    if (ch === "｛" || ch === "{" || ch === "〔") { out += "{"; continue; }
+    if (ch === "｝" || ch === "}" || ch === "〕") { out += "}"; continue; }
+    if (ch === "［" || ch === "[") { out += "["; continue; }
+    if (ch === "］" || ch === "]") { out += "]"; continue; }
+    if (ch === "＋") { out += "+"; continue; }
+    if ("⁺⁻±".includes(ch)) { continue; } // 電荷記号は無視
+    out += ch; // 中黒類はそのまま (印刷形式で活かす)
+  }
+  return out;
+}
+
+// --- 字句解析 ---
+function tokenize(s) {
+  const tokens = [];
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (SEPARATORS.includes(c)) {
+      tokens.push({type:"plus", original: c});
+      i++; continue;
+    }
+    if ("([{".includes(c)) { tokens.push({type:"lparen", ch:c}); i++; continue; }
+    if (")]}".includes(c)) { tokens.push({type:"rparen", ch:c}); i++; continue; }
+    if (/\d/.test(c)) {
+      let n = "";
+      while (i < s.length && /\d/.test(s[i])) n += s[i++];
+      tokens.push({type:"num", value: parseInt(n, 10)});
+      continue;
+    }
+    if (/[a-z]/.test(c)) {
+      // 小文字は受け付けない（大文字で正しく入力する必要がある）
+      // 例: "h2o" → エラー、"H2O" が正しい入力
+      throw new Error(`小文字は使用できません: "${c}" → 正しくは "${c.toUpperCase()}" から始まる元素記号で入力してください`);
+    }
+    if (/[A-Z]/.test(c)) {
+      const c2 = s[i+1];
+      let sym;
+      // 【大文字+大文字】: 2文字目も大文字なら1文字で区切る。
+      //   例: "CO" → C と O（一酸化炭素）、"NaCL" → Na, C, L（L は未知元素エラー）
+      //   理由: "Co"(コバルト) と "CO"(炭素+酸素) を区別するため。
+      //         2文字目が大文字なら「新しい元素の始まり」と判断する。
+      if (c2 && /[A-Z]/.test(c2)) {
+        sym = c;
+        i += 1;
+      } else if (c2 && /[a-z]/.test(c2)) {
+        // 【大文字+小文字】: 2文字で元素記号を試みる。
+        //   原子量テーブルに存在すれば2文字で確定（例: Na, Ca, Fe）、
+        //   なければ1文字に切り詰め（例: B, C, N）。
+        const cand = c + c2;
+        if (Object.prototype.hasOwnProperty.call(ATOMIC_WEIGHTS, cand)) {
+          sym = cand;
+          i += 2;
+        } else {
+          sym = c;
+          i += 1;
+        }
+      } else {
+        // 次の文字がない、または数字・記号: 1文字確定
+        sym = c;
+        i += 1;
+      }
+      tokens.push({type:"elem", symbol: sym});
+      continue;
+    }
+    throw new Error(`予期しない文字: "${c}"`);
+  }
+  return tokens;
+}
+
+// --- 構文解析 (AST) ---
+//   formula  := mole ( '+' mole )*
+//   mole     := num? body            ; mole.mult * Σ body
+//   body     := ( elem num? | '(' body ')' num? )*
+//
+//   AST item の種類:
+//     atom  : { kind:'atom',  sym, count }
+//     group : { kind:'group', body:Item[], count }
+//     value : { kind:'value', val, count }   ← 縮約後に使う
+function parseAST(tokens) {
+  let i = 0;
+
+  function parseBody() {
+    const items = [];
+    while (i < tokens.length) {
+      const t = tokens[i];
+      if (t.type === "plus" || t.type === "rparen") break;
+      if (t.type === "elem") {
+        i++;
+        let n = 1;
+        if (tokens[i] && tokens[i].type === "num") { n = tokens[i].value; i++; }
+        items.push({ kind: "atom", sym: t.symbol, count: n });
+      } else if (t.type === "lparen") {
+        i++;
+        const sub = parseBody();
+        if (!tokens[i] || tokens[i].type !== "rparen") {
+          throw new Error("括弧が閉じていません");
+        }
+        i++;
+        let n = 1;
+        if (tokens[i] && tokens[i].type === "num") { n = tokens[i].value; i++; }
+        items.push({ kind: "group", body: sub, count: n });
+      } else if (t.type === "num") {
+        throw new Error(`数字の位置が不正です: ${t.value}`);
+      } else {
+        break;
+      }
+    }
+    return items;
+  }
+
+  const moles = [];
+  let first = true;
+  while (i < tokens.length) {
+    if (!first) {
+      if (tokens[i].type !== "plus") {
+        throw new Error("'+' が必要です");
+      }
+      i++;
+    }
+    first = false;
+    if (i >= tokens.length) break;
+    let mult = 1;
+    if (tokens[i].type === "num") { mult = tokens[i].value; i++; }
+    if (i >= tokens.length) break;
+    const body = parseBody();
+    moles.push({ mult, body });
+  }
+  return moles;
+}
+
+// 複数 mole（+ で連結された分子群）を単一の Item[] に平坦化する。
+// 係数処理のルール:
+//   "2 H2O" → mult=2, body=[{atom:H,count:2},{atom:O,count:1}]
+//   ↳ body が単一 atom(count=1) なら count に吸収 → {atom:H,count:2} に変換
+//      これにより "2H" が "H2" と同じ内部表現になる（途中式表示の統一のため）
+//   ↳ body が複数要素または括弧グループなら body 全体を group に包んで count を設定
+function flattenMoles(moles) {
+  const items = [];
+  for (const m of moles) {
+    if (m.mult === 1) {
+      items.push(...m.body);
+    } else if (m.body.length === 1 && m.body[0].kind === "atom" && m.body[0].count === 1) {
+      items.push({ kind: "atom", sym: m.body[0].sym, count: m.mult });
+    } else {
+      items.push({ kind: "group", body: m.body, count: m.mult });
+    }
+  }
+  return items;
+}
+
+// 元素ごとの個数を集計 (内訳テーブル用)
+function aggregateCounts(items, mult = 1, counts = {}) {
+  for (const it of items) {
+    if (it.kind === "atom") {
+      counts[it.sym] = (counts[it.sym] || 0) + mult * it.count;
+    } else if (it.kind === "group") {
+      aggregateCounts(it.body, mult * it.count, counts);
+    } else if (it.kind === "value") {
+      // 通常は集計時に value はないが念のため
+    }
+  }
+  return counts;
+}
+
+// --- 途中式の構築 ---
+function hasGroup(items) {
+  for (const it of items) if (it.kind === "group") return true;
+  return false;
+}
+
+function sumItems(items) {
+  let s = 0;
+  for (const it of items) {
+    if (it.kind === "atom") s += ATOMIC_WEIGHTS[it.sym] * it.count;
+    else if (it.kind === "value") s += it.val * it.count;
+    else if (it.kind === "group") s += sumItems(it.body) * it.count;
+  }
+  return s;
+}
+
+// 最も内側のカッコ（= body に group を含まない group）を数値 value に縮約する。
+// 例: Ca3(PO4)2 の1ステップ目では (PO4) → 94.971 に変換し、
+//     外側の Ca3 * (94.971) * 2 という式に変換してから次のステップへ進む。
+// 再帰的に呼び出すことで、ネストしたカッコを内側から段階的に展開できる。
+// → buildTrace がこの関数を繰り返し呼ぶことで途中式の各行を生成する。
+function reduceInnermost(items) {
+  return items.map(it => {
+    if (it.kind === "group") {
+      if (hasGroup(it.body)) {
+        return { kind: "group", body: reduceInnermost(it.body), count: it.count };
+      }
+      return { kind: "value", val: sumItems(it.body), count: it.count };
+    }
+    return it;
+  });
+}
+
+function fmtNum(v) {
+  if (Math.abs(v) < 1e-12) return "0";
+  if (Number.isInteger(v)) return String(v);
+  // 浮動小数点ノイズ除去のため 1e8 桁で丸めた上で文字列化
+  const r = Math.round(v * 1e8) / 1e8;
+  return Number.isInteger(r) ? String(r) : String(r);
+}
+
+function renderItem(it) {
+  if (it.kind === "atom") {
+    const w = ATOMIC_WEIGHTS[it.sym];
+    return it.count === 1 ? String(w) : `${w} * ${it.count}`;
+  }
+  if (it.kind === "value") {
+    return it.count === 1 ? fmtNum(it.val) : `${fmtNum(it.val)} * ${it.count}`;
+  }
+  if (it.kind === "group") {
+    const inner = it.body.map(renderItem).join(" + ");
+    return it.count === 1 ? `(${inner})` : `(${inner}) * ${it.count}`;
+  }
+  return "";
+}
+
+function renderItems(items) {
+  return items.map(renderItem).join(" + ");
+}
+
+// 途中式を1行ずつ生成して返す。
+// 戦略: reduceInnermost を繰り返しかけることで、内側のカッコから順に数値へ縮約。
+//   初期状態: "1.00784 * 2 + (30.97... + 15.99... * 4) * 2 + ..."
+//   1ステップ: "(30.97... + ...)" が数値に置き換わる
+//   最終行:   合計値のみ（すでに最終行と一致する場合は重複追加しない）
+function buildTrace(items) {
+  const lines = [];
+  let cur = items;
+  lines.push(renderItems(cur));
+  while (hasGroup(cur)) {
+    cur = reduceInnermost(cur);
+    lines.push(renderItems(cur));
+  }
+  const finalStr = fmtNum(sumItems(cur));
+  if (lines[lines.length - 1] !== finalStr) {
+    lines.push(finalStr);
+  }
+  return lines;
+}
+
+// --- 印刷形式変換 ---
+// 元素直後・閉じ括弧直後の数値を下付き、それ以外 (係数) は通常字。
+// 数値が 1 のときは省略。分子区切りは入力文字を保持 (· や × はそのまま、+ は前後にスペース)。
+function toSubscript(n) {
+  return String(n).split("").map(c => /\d/.test(c) ? SUB_DIGITS[+c] : c).join("");
+}
+
+function prettyPrint(tokens) {
+  let out = "";
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.type === "elem") {
+      out += t.symbol;
+    } else if (t.type === "num") {
+      const prev = tokens[i - 1];
+      const isSubscript = prev && (prev.type === "elem" || prev.type === "rparen");
+      if (t.value === 1) continue; // 1 は表示しない (慣例)
+      out += isSubscript ? toSubscript(t.value) : String(t.value);
+    } else if (t.type === "plus") {
+      const ch = t.original;
+      out += (ch === "+") ? " + " : ch;
+    } else if (t.type === "lparen" || t.type === "rparen") {
+      out += t.ch;
+    }
+  }
+  return out;
+}
+
+// --- 計算 ---
+function calc(input) {
+  const norm = normalize(input);
+  const tokens = tokenize(norm);
+  const moles = parseAST(tokens);
+  const items = flattenMoles(moles);
+  const counts = aggregateCounts(items);
+
+  // 未知の元素チェック
+  for (const sym in counts) {
+    if (ATOMIC_WEIGHTS[sym] === undefined) {
+      throw new Error(`未知の元素: ${sym}`);
+    }
+  }
+
+  const order = Object.keys(ATOMIC_WEIGHTS);
+  const orderIdx = {};
+  order.forEach((k, idx) => { orderIdx[k] = idx; });
+
+  const symbols = Object.keys(counts).sort(
+    (a, b) => (orderIdx[a] ?? 9999) - (orderIdx[b] ?? 9999)
+  );
+
+  let mw = 0;
+  const rows = [];
+  for (const sym of symbols) {
+    const w = ATOMIC_WEIGHTS[sym];
+    const n = counts[sym];
+    const sub = w * n;
+    rows.push({sym, n, w, sub});
+    mw += sub;
+  }
+
+  const trace = items.length > 0 ? buildTrace(items) : [];
+
+  return {mw, rows, normalized: norm, tokens, pretty: prettyPrint(tokens), trace, counts};
+}
+// @@CORE_END
+
+// --- UI ---
+const $input = document.getElementById("input");
+const $result = document.getElementById("result");
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  }[c]));
+}
+
+function fmt(v, digits = 4) {
+  return Number(v).toFixed(digits);
+}
+
+function renderTrace(traceLines) {
+  // 入力構造を保ったまま、最も内側のカッコから順に評価する途中式を縦に並べる。
+  // 例: Zn(NO3)2(NH2NHCONH2)3 では
+  //   1) 65.39 + (14.00674 + 15.9994 * 3) * 2 + (14.00674 + ... + 1.00794 * 2) * 3
+  //   2) 65.39 + 62.00494 * 2 + 75.07032 * 3
+  //   3) 414.61084
+  if (!traceLines || traceLines.length === 0) return "";
+  let html = '<div class="trace-section">';
+  html += '<div class="trace-label">途中式:</div>';
+  for (let i = 0; i < traceLines.length; i++) {
+    const isFinal = (i === traceLines.length - 1) && traceLines.length > 1;
+    const cls = isFinal ? "trace-step trace-final" : "trace-step";
+    html += `<div class="${cls}">${escapeHtml(traceLines[i])}</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function render() {
+  const v = $input.value.trim();
+  const $mwDisplay = document.getElementById("mw-display");
+  scheduleUrlSync();  // アドレスバーの #f= を現在の入力に同期 (デバウンス付き)
+
+  // 入力中は「対応する記法」等の説明・履歴を隠し、画面を広く使えるようにする。
+  // 入力が空に戻ったら再表示する。URL・GitHub・クレジット行は常に表示したまま。
+  const $footerDetails = document.getElementById("footerDetails");
+  if ($footerDetails) $footerDetails.classList.toggle("footer-hidden", v.length > 0);
+
+  if (!v) { 
+    $mwDisplay.innerHTML = '<div class="mw">0.0000<span class="mw-unit">g/mol</span></div>';
+    $result.innerHTML = ""; 
+    updateShareState(null);
+    return; 
+  }
+
+  let r;
+  try {
+    r = calc(v);
+  } catch (e) {
+    $mwDisplay.innerHTML = '<div class="mw">0.0000<span class="mw-unit">g/mol</span></div>';
+    $result.innerHTML = `<div class="err">エラー: ${escapeHtml(e.message)}</div>`;
+    updateShareState(null);
+    return;
+  }
+  if (r.rows.length === 0) {
+    $mwDisplay.innerHTML = '<div class="mw">0.0000<span class="mw-unit">g/mol</span></div>';
+    $result.innerHTML = `<div class="err">元素が見つかりません</div>`;
+    updateShareState(null);
+    return;
+  }
+
+  // 分子量を mw-display に表示
+  $mwDisplay.innerHTML = `<div class="mw">${fmt(r.mw)}<span class="mw-unit">g/mol</span></div>`;
+
+  let html = "";
+
+  // (2) 印刷形式 — 毎回表示
+  html += `<div class="pretty">
+    <span class="pretty-label">印刷形式</span>${escapeHtml(r.pretty)}
+  </div>`;
+
+  // (3) 正規化後の入力 — 入力と異なる時だけ
+  if (r.normalized !== v) {
+    html += `<div class="normalized">正規化後の入力: <code>${escapeHtml(r.normalized)}</code></div>`;
+  }
+
+  // (4) 元素ごとの内訳 (表)
+  html += '<table class="summary"><thead><tr>';
+  html += '<th>元素</th><th>個数</th><th>原子量</th><th>小計</th><th>質量%</th>';
+  html += '</tr></thead><tbody>';
+  for (const row of r.rows) {
+    const pct = r.mw > 0 ? (row.sub / r.mw) * 100 : 0;
+    html += `<tr>
+      <td>${escapeHtml(row.sym)}</td>
+      <td>${row.n}</td>
+      <td>${row.w}</td>
+      <td>${fmt(row.sub)}</td>
+      <td>${pct.toFixed(2)} %</td>
+    </tr>`;
+  }
+  html += `</tbody><tfoot><tr>
+    <td colspan="3">合計</td><td>${fmt(r.mw)}</td><td>100.00 %</td>
+  </tr></tfoot></table>`;
+
+  // (5) 途中式 — 入力構造に沿って内側のカッコから段階的に縮約
+  html += renderTrace(r.trace);
+
+  // (6) アクション行 — 共有・画像保存・同位体パターン展開を結果下部にまとめる
+  html += `<div class="result-actions">
+    <button type="button" class="share-button" id="shareBtn"
+            aria-label="計算結果を共有">共有</button>
+    <button type="button" class="share-button" id="imageBtn"
+            aria-label="結果カードを画像として保存">画像</button>
+    <button type="button" class="isotope-toggle" id="isotopeToggle"
+            aria-expanded="false" aria-controls="isotopePanel">同位体パターンを表示</button>
+    <span class="share-feedback" id="shareFeedback" role="status" aria-live="polite"></span>
+  </div>
+  <div id="isotopePanel" class="isotope-panel" hidden></div>`;
+
+  $result.innerHTML = html;
+  lastResult = r;
+  setupResultActions();
+  setupIsotopeToggle();
+  updateShareState(r);
+}
+
+$input.addEventListener("input", render);
+
+// クリアボタンのイベント
+const $clearBtn = document.getElementById("clearBtn");
+$clearBtn.addEventListener("click", () => {
+  $input.value = "";
+  render();
+  $input.focus();
+});
+
+// =====================================================================
+// URL共有 — v0.07
+// 化学式をURLハッシュ (#f=...) に載せて共有する。
+// ハッシュフラグメントはHTTPリクエストに含まれずサーバーへ送信されないため、
+// 「完全ローカル処理・データ送信なし」の方針をURL共有でも維持できる。
+// 読み込みは互換のためクエリ形式 (?f=...) も受け付ける。
+// =====================================================================
+const CANONICAL_URL = "https://tools.nakaix.com/mwcalc/";
+// URL経由で受け取る化学式の検証（深層防御）。
+// VALID_PRESET_REGEX の許容文字に加え、入力欄では無視される上付き数字・
+// 電荷記号 (⁰-⁹, ⁺, ⁻, ±) と分子区切り文字の異体 (∙ ✕ ⨯) を許容する。
+const VALID_URL_FORMULA_REGEX =
+  /^[A-Za-z0-9₀-₉０-９⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻±()[\]{}（）〔〕｛｝·・•∙⋅×✕⨯+\s]+$/;
+
+let lastShareResult = null;   // 直近の正常な計算結果 (render が更新する)
+let shareFeedbackTimer = null;
+let urlSyncTimer = null;
+
+/** 共有用URLを組み立てる。file: 等ローカルで開いている場合は正規URLを使う */
+function buildShareUrl(formula) {
+  const base = (location.protocol === "http:" || location.protocol === "https:")
+    ? location.origin + location.pathname
+    : CANONICAL_URL;
+  return base + "#f=" + encodeURIComponent(formula);
+}
+
+/** アドレスバーの #f= を現在の入力に同期する（デバウンス付き） */
+function scheduleUrlSync() {
+  clearTimeout(urlSyncTimer);
+  urlSyncTimer = setTimeout(() => {
+    const v = $input.value.trim();
+    const hash = v ? "#f=" + encodeURIComponent(v) : "";
+    try {
+      // replaceState は履歴エントリを増やさず、hashchange も発火しない
+      history.replaceState(null, "", location.pathname + location.search + hash);
+    } catch (e) { /* file: 等で失敗しても本体動作には影響しない */ }
+  }, 300);
+}
+
+/** render から呼ばれ、直近結果を保持する（ボタンは結果内に都度生成される） */
+function updateShareState(result) {
+  lastShareResult = result;
+}
+
+function showShareFeedback(msg) {
+  const $fb = document.getElementById("shareFeedback");
+  if (!$fb) return;
+  $fb.textContent = msg;
+  clearTimeout(shareFeedbackTimer);
+  shareFeedbackTimer = setTimeout(() => {
+    const $f = document.getElementById("shareFeedback");
+    if ($f) $f.textContent = "";
+  }, 2500);
+}
+
+/** クリップボードへコピー（navigator.clipboard 非対応環境はフォールバック） */
+async function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  // フォールバック（file: などの非セキュアコンテキスト向け）
+  const $ta = document.createElement("textarea");
+  $ta.value = text;
+  $ta.setAttribute("readonly", "");
+  $ta.style.position = "fixed";
+  $ta.style.left = "-9999px";
+  document.body.appendChild($ta);
+  $ta.select();
+  try { document.execCommand("copy"); }
+  finally { document.body.removeChild($ta); }
+}
+
+async function onShareClick() {
+  const v = $input.value.trim();
+  if (!v || !lastShareResult) return;
+  const url = buildShareUrl(v);
+  const text = `${lastShareResult.pretty} の分子量: ${fmt(lastShareResult.mw)} g/mol — MWCALC`;
+  // 共有シートが使える環境（主にモバイル）ではそちらを優先
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "MWCALC — 分子量計算機", text: text, url: url });
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return;  // ユーザーによるキャンセル
+      // それ以外の失敗はクリップボードへフォールバック
+    }
+  }
+  try {
+    await copyToClipboard(text + "\n" + url);
+    showShareFeedback("リンクをコピーしました");
+  } catch (e) {
+    showShareFeedback("コピーできませんでした");
+  }
+}
+
+// =====================================================================
+// 結果カードの画像生成 — v0.12
+// 化学式・分子量・元素別内訳(質量%込み)・途中式・ツール名を1枚のPNGに描画し、
+// 共有シート(ファイル添付)またはダウンロードで保存できる。外部ライブラリ不使用。
+// 共有画像は配布先を選ばないよう常にライトテーマ(白背景)で描画する。
+// =====================================================================
+
+// pretty文字列(下付き数字を含む)を Canvas に描画する。戻り値は描画幅。
+// measureOnly=true のときは描画せず幅だけ返す。
+const CARD_SUB = "₀₁₂₃₄₅₆₇₈₉";
+function cardDrawFormula(ctx, x, y, pretty, size, color, measureOnly) {
+  const subSize = Math.round(size * 0.62);
+  const drop = Math.round(size * 0.16);
+  let cx = x;
+  ctx.textBaseline = "alphabetic";
+  for (const ch of pretty) {
+    const sub = CARD_SUB.indexOf(ch);
+    if (sub >= 0) {
+      const g = String(sub);
+      ctx.font = `700 ${subSize}px system-ui, -apple-system, sans-serif`;
+      if (!measureOnly) { ctx.fillStyle = color; ctx.fillText(g, cx, y + drop); }
+      cx += ctx.measureText(g).width + 0.5;
+    } else {
+      ctx.font = `700 ${size}px system-ui, -apple-system, sans-serif`;
+      if (!measureOnly) { ctx.fillStyle = color; ctx.fillText(ch, cx, y); }
+      cx += ctx.measureText(ch).width;
+    }
+  }
+  return cx - x;
+}
+
+// 長い文字列を maxWidth に収まるよう空白優先で折り返す
+function cardWrap(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return [text];
+  const lines = [];
+  const words = text.split(" ");
+  let cur = "";
+  const pushHard = (s) => {
+    // 空白で切れない長い塊は文字単位で折る
+    let seg = "";
+    for (const c of s) {
+      if (ctx.measureText(seg + c).width > maxWidth && seg) { lines.push(seg); seg = c; }
+      else seg += c;
+    }
+    if (seg) cur = seg;
+  };
+  for (const w of words) {
+    const cand = cur ? cur + " " + w : w;
+    if (ctx.measureText(cand).width <= maxWidth) {
+      cur = cand;
+    } else {
+      if (cur) { lines.push(cur); cur = ""; }
+      if (ctx.measureText(w).width > maxWidth) { pushHard(w); }
+      else cur = w;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// 結果カードを描画した canvas を返す（高DPI対応）
+function buildResultCard(r) {
+  const COL = {
+    ink: "#222222", sub: "#555555", blue: "#1565c0", faint: "#e3edf9",
+    line: "#dfe6ee", zebra: "#f7f9fc", bg: "#ffffff", head: "#f0f4fa",
+  };
+  const PAD = 32;
+  const INNER = 656;                 // 内容幅
+  const W = INNER + PAD * 2;         // 720
+  const measure = document.createElement("canvas").getContext("2d");
+
+  // 途中式の折り返し行を事前に用意（フォント15px）
+  measure.font = "15px system-ui, -apple-system, sans-serif";
+  const traceWrapped = [];
+  for (const line of (r.trace || [])) {
+    for (const wl of cardWrap(measure, line, INNER)) traceWrapped.push(wl);
+  }
+
+  // 高さを積み上げで算出
+  let y = PAD;
+  y += 44;                            // 化学式
+  y += 52;                            // 分子量
+  y += 10;
+  const tableTop = y;
+  const rowH = 30, headH = 32;
+  y += headH + r.rows.length * rowH + rowH; // 見出し+行+合計行
+  y += 22;
+  let traceTop = y;
+  if (traceWrapped.length) {
+    y += 26;                          // 「途中式:」ラベル
+    y += traceWrapped.length * 22;
+    y += 14;
+  }
+  y += 8;                             // フッター前
+  y += 28;                            // フッター
+  const H = y + PAD;
+
+  const dpr = 2;                      // 保存画像は2倍解像度で鮮明に
+  const canvas = document.createElement("canvas");
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  // 背景
+  ctx.fillStyle = COL.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── 化学式 ──
+  let hy = PAD;
+  ctx.textBaseline = "alphabetic";
+  cardDrawFormula(ctx, PAD, hy + 34, r.pretty, 34, COL.ink, false);
+  hy += 44;
+
+  // ── 分子量 ──
+  ctx.font = "800 40px system-ui, -apple-system, sans-serif";
+  ctx.fillStyle = COL.blue;
+  ctx.textBaseline = "alphabetic";
+  const mwStr = "= " + fmt(r.mw);
+  ctx.fillText(mwStr, PAD, hy + 40);
+  const mwW = ctx.measureText(mwStr).width;
+  ctx.font = "700 20px system-ui, -apple-system, sans-serif";
+  ctx.fillText("g/mol", PAD + mwW + 12, hy + 40);
+  hy += 52 + 10;
+
+  // ── 元素別内訳テーブル ──
+  const cols = [
+    {label: "元素", x: PAD + 6,        align: "left"},
+    {label: "個数", x: PAD + 150,      align: "right"},
+    {label: "原子量", x: PAD + 300,    align: "right"},
+    {label: "小計", x: PAD + 470,      align: "right"},
+    {label: "質量%", x: PAD + INNER-6, align: "right"},
+  ];
+  // 見出し
+  ctx.fillStyle = COL.head;
+  ctx.fillRect(PAD, hy, INNER, headH);
+  ctx.font = "700 14px system-ui, -apple-system, sans-serif";
+  ctx.fillStyle = COL.sub;
+  ctx.textBaseline = "middle";
+  for (const c of cols) {
+    ctx.textAlign = c.align;
+    ctx.fillText(c.label, c.x, hy + headH / 2);
+  }
+  hy += headH;
+  // 行
+  ctx.font = "15px system-ui, -apple-system, sans-serif";
+  let idx = 0;
+  for (const row of r.rows) {
+    if (idx % 2 === 1) { ctx.fillStyle = COL.zebra; ctx.fillRect(PAD, hy, INNER, rowH); }
+    const pct = r.mw > 0 ? (row.sub / r.mw) * 100 : 0;
+    const vals = [row.sym, String(row.n), String(row.w), fmt(row.sub), pct.toFixed(2) + " %"];
+    ctx.fillStyle = COL.ink;
+    for (let i = 0; i < cols.length; i++) {
+      ctx.textAlign = cols[i].align;
+      ctx.fillText(vals[i], cols[i].x, hy + rowH / 2);
+    }
+    hy += rowH;
+    idx++;
+  }
+  // 合計行
+  ctx.strokeStyle = COL.blue;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(PAD, hy + 0.5); ctx.lineTo(PAD + INNER, hy + 0.5); ctx.stroke();
+  ctx.font = "700 15px system-ui, -apple-system, sans-serif";
+  ctx.fillStyle = COL.ink;
+  ctx.textAlign = "left";
+  ctx.fillText("合計", cols[0].x, hy + rowH / 2);
+  ctx.textAlign = "right";
+  ctx.fillText(fmt(r.mw), cols[3].x, hy + rowH / 2);
+  ctx.fillText("100.00 %", cols[4].x, hy + rowH / 2);
+  hy += rowH + 22;
+
+  // ── 途中式 ──
+  if (traceWrapped.length) {
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "700 14px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = COL.sub;
+    ctx.fillText("途中式:", PAD, hy + 16);
+    hy += 26;
+    ctx.font = "15px system-ui, -apple-system, sans-serif";
+    const lastFinal = (r.trace && r.trace.length > 1) ? r.trace[r.trace.length - 1] : null;
+    for (const line of traceWrapped) {
+      ctx.fillStyle = (line === lastFinal) ? COL.blue : COL.ink;
+      ctx.font = (line === lastFinal)
+        ? "700 15px system-ui, -apple-system, sans-serif"
+        : "15px system-ui, -apple-system, sans-serif";
+      ctx.fillText(line, PAD, hy + 15);
+      hy += 22;
+    }
+    hy += 14;
+  }
+
+  // ── フッター ──
+  ctx.strokeStyle = COL.line;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD, hy + 0.5); ctx.lineTo(PAD + INNER, hy + 0.5); ctx.stroke();
+  hy += 8;
+  ctx.font = "700 15px system-ui, -apple-system, sans-serif";
+  ctx.fillStyle = COL.ink;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("tools.nakaix.com/mwcalc", PAD, hy + 18);
+  const urlW = ctx.measureText("tools.nakaix.com/mwcalc").width;
+  ctx.font = "400 13px system-ui, -apple-system, sans-serif";
+  ctx.fillStyle = COL.sub;
+  ctx.fillText("分子量計算機", PAD + urlW + 10, hy + 18);
+
+  // 下端アクセントバー
+  ctx.fillStyle = COL.blue;
+  ctx.fillRect(0, H - 6, W, 6);
+
+  return canvas;
+}
+
+// canvas を Blob 化（Promise）
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    if (canvas.toBlob) {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob失敗")), "image/png");
+    } else {
+      // 古い環境向けフォールバック
+      try {
+        const data = canvas.toDataURL("image/png").split(",")[1];
+        const bin = atob(data);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        resolve(new Blob([arr], {type: "image/png"}));
+      } catch (e) { reject(e); }
+    }
+  });
+}
+
+function cardFilename(r) {
+  // 化学式から安全なファイル名を作る（英数字と一部記号のみ）
+  const base = (r.normalized || "molecule").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return "mwcalc_" + (base || "molecule") + ".png";
+}
+
+async function onImageClick() {
+  if (!lastShareResult) return;
+  let blob;
+  try {
+    const canvas = buildResultCard(lastShareResult);
+    blob = await canvasToBlob(canvas);
+  } catch (e) {
+    showShareFeedback("画像を生成できませんでした");
+    return;
+  }
+  const filename = cardFilename(lastShareResult);
+  const file = (typeof File !== "undefined") ? new File([blob], filename, {type: "image/png"}) : null;
+
+  // ファイル共有に対応していれば共有シートを優先（主にモバイル）
+  if (file && navigator.canShare && navigator.canShare({files: [file]}) && navigator.share) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: "MWCALC — 分子量計算機",
+        text: `${lastShareResult.pretty} の分子量: ${fmt(lastShareResult.mw)} g/mol`,
+      });
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return;  // キャンセル
+      // それ以外はダウンロードにフォールバック
+    }
+  }
+
+  // ダウンロード
+  try {
+    const urlObj = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = urlObj;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(urlObj), 1000);
+    showShareFeedback("画像を保存しました");
+  } catch (e) {
+    showShareFeedback("保存できませんでした");
+  }
+}
+
+/** 結果内に都度生成される共有・画像ボタンにイベントを結びつける */
+function setupResultActions() {
+  const $s = document.getElementById("shareBtn");
+  const $i = document.getElementById("imageBtn");
+  if ($s) $s.addEventListener("click", onShareClick);
+  if ($i) $i.addEventListener("click", onImageClick);
+}
+
+/** URL (#f= または ?f=) から化学式を読み込んで入力欄へ反映する
+ *  @returns {boolean} 入力欄を書き換えたかどうか */
+function loadFormulaFromUrl() {
+  let formula = null;
+  if (location.hash.startsWith("#f=")) {
+    try { formula = decodeURIComponent(location.hash.slice(3)); }
+    catch (e) { return false; }  // 不正なパーセントエンコーディングは無視
+  } else if (location.search) {
+    const params = new URLSearchParams(location.search);
+    if (params.has("f")) formula = params.get("f");
+  }
+  if (formula === null) return false;
+  formula = formula.trim();
+  // 深層防御: 長さ上限と文字種ホワイトリストで検証してから反映する
+  if (!formula || formula.length > 200 || !VALID_URL_FORMULA_REGEX.test(formula)) return false;
+  if ($input.value === formula) return false;
+  $input.value = formula;
+  return true;
+}
+
+// 共有リンクを同一タブで開き直した場合（戻る/進むを含む）にも反映する
+window.addEventListener("hashchange", () => {
+  if (loadFormulaFromUrl()) render();
+});
+
+// =====================================================================
+// 同位体パターン表示 — v0.08
+// 「同位体パターンを表示」ボタンで展開。棒グラフ(canvas)＋数値表を描画する。
+// 描画は展開時に一度だけ行い、ダークモード・リサイズにも追従する。
+// =====================================================================
+let lastResult = null;               // 直近の正常な計算結果（render が更新）
+let isotopeShown = false;            // パネルが展開中か（再 render 後も状態を保つ）
+let isotopeRedrawTimer = null;
+
+function isDarkMode() {
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+/** 結果内の同位体トグルボタンにイベントを結び、必要なら展開状態を復元する */
+function setupIsotopeToggle() {
+  const $toggle = document.getElementById("isotopeToggle");
+  const $panel  = document.getElementById("isotopePanel");
+  if (!$toggle || !$panel) return;
+
+  $toggle.addEventListener("click", () => {
+    const willShow = $panel.hidden;
+    $panel.hidden = !willShow;
+    $toggle.setAttribute("aria-expanded", String(willShow));
+    $toggle.textContent = willShow ? "同位体パターンを隠す" : "同位体パターンを表示";
+    isotopeShown = willShow;
+    if (willShow) renderIsotopePanel($panel);
+  });
+
+  // 直前まで展開していた場合、再計算後も展開状態を維持する
+  if (isotopeShown && lastResult) {
+    $panel.hidden = false;
+    $toggle.setAttribute("aria-expanded", "true");
+    $toggle.textContent = "同位体パターンを隠す";
+    renderIsotopePanel($panel);
+  }
+}
+
+/** パネルに情報行・canvas・数値表を組み立てて描画する */
+function renderIsotopePanel($panel) {
+  if (!lastResult) return;
+  let pat;
+  try {
+    pat = isotopePattern(lastResult.counts);
+  } catch (e) {
+    $panel.textContent = "同位体パターンを計算できませんでした。";
+    return;
+  }
+  if (!pat.peaks.length) { $panel.textContent = "同位体データがありません。"; return; }
+
+  // 情報行（単同位体質量・平均質量・基準ピーク）
+  const info = document.createElement("div");
+  info.className = "isotope-info";
+  info.innerHTML =
+    `<span>単同位体質量 <b>${fmt(pat.mono, 4)}</b></span>` +
+    `<span>平均質量 <b>${fmt(pat.avg, 4)}</b></span>` +
+    `<span>基準ピーク <b>${fmt(pat.base, 4)}</b></span>`;
+
+  // canvas（棒グラフ）
+  const canvasWrap = document.createElement("div");
+  canvasWrap.className = "isotope-canvas-wrap";
+  const canvas = document.createElement("canvas");
+  canvasWrap.appendChild(canvas);
+
+  // 数値表（全ピーク・ヘッダークリックでソート可能）
+  const table = buildIsotopeTable(pat.peaks);
+
+  $panel.textContent = "";
+  $panel.appendChild(info);
+  $panel.appendChild(canvasWrap);
+  $panel.appendChild(table);
+
+  drawIsotopeChart(canvas, pat.peaks);
+}
+
+// 同位体表を組み立てる。列見出しをクリック（Enter/Space可）でソートする。
+// セルは DOM 生成（innerHTML 不使用）。ソートは行要素の並べ替えで行う。
+function buildIsotopeTable(peaks) {
+  const columns = [
+    {key: "mass", label: "質量",     defaultDir: 1,  render: v => fmt(v, 4)},
+    {key: "rel",  label: "相対強度", defaultDir: -1, render: v => v.toFixed(2) + " %"},
+    {key: "prob", label: "存在比",   defaultDir: -1, render: v => (v * 100).toFixed(3) + " %"},
+  ];
+  const table = document.createElement("table");
+  table.className = "isotope-table summary sortable";
+
+  // 各ピークに対応する行要素を先に作っておき、ソート時は並べ替えるだけにする
+  const rowFor = new Map();
+  const tbody = document.createElement("tbody");
+  for (const pk of peaks) {
+    const tr = document.createElement("tr");
+    for (const col of columns) {
+      const td = document.createElement("td");
+      td.textContent = col.render(pk[col.key]);
+      tr.appendChild(td);
+    }
+    rowFor.set(pk, tr);
+    tbody.appendChild(tr);
+  }
+
+  const sort = {key: "mass", dir: 1};   // 既定はスペクトル順（質量の昇順）
+  const headCells = new Map();
+
+  function apply() {
+    const col = columns.find(c => c.key === sort.key);
+    const sorted = peaks.slice().sort((a, b) => (a[sort.key] - b[sort.key]) * sort.dir);
+    for (const pk of sorted) tbody.appendChild(rowFor.get(pk));  // 既存行を順に再追加
+    // 見出しの状態表示（aria-sort と ▲▼）
+    for (const c of columns) {
+      const th = headCells.get(c.key);
+      const active = c.key === sort.key;
+      th.setAttribute("aria-sort", active ? (sort.dir === 1 ? "ascending" : "descending") : "none");
+      const ind = th.querySelector(".sort-ind");
+      ind.textContent = active ? (sort.dir === 1 ? " ▲" : " ▼") : "";
+    }
+  }
+  function onHeader(key) {
+    if (sort.key === key) sort.dir = -sort.dir;              // 同じ列なら向きを反転
+    else { sort.key = key; sort.dir = columns.find(c => c.key === key).defaultDir; }
+    apply();
+  }
+
+  const thead = document.createElement("thead");
+  const htr = document.createElement("tr");
+  for (const col of columns) {
+    const th = document.createElement("th");
+    th.textContent = col.label;
+    const ind = document.createElement("span");
+    ind.className = "sort-ind";
+    th.appendChild(ind);
+    th.tabIndex = 0;
+    th.setAttribute("role", "columnheader");
+    th.setAttribute("aria-sort", "none");
+    th.title = "クリックで並べ替え";
+    th.addEventListener("click", () => onHeader(col.key));
+    th.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onHeader(col.key); }
+    });
+    headCells.set(col.key, th);
+    htr.appendChild(th);
+  }
+  thead.appendChild(htr);
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  apply();
+  return table;
+}
+
+/** canvas に同位体パターンの棒グラフを描画する（高DPI対応） */
+function drawIsotopeChart(canvas, peaks) {
+  const cssW = Math.max(280, Math.min(canvas.parentElement.clientWidth || 420, 560));
+  const cssH = 240;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.style.width = cssW + "px";
+  canvas.style.height = cssH + "px";
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const dark = isDarkMode();
+  const COL = {
+    axis:  dark ? "#888" : "#999",
+    grid:  dark ? "#333" : "#eee",
+    text:  dark ? "#bbb" : "#555",
+    bar:   dark ? "#64b5f6" : "#1565c0",
+    label: dark ? "#ddd" : "#222",
+  };
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const padL = 40, padR = 12, padT = 16, padB = 34;
+  const plotW = cssW - padL - padR;
+  const plotH = cssH - padT - padB;
+
+  // X 範囲（表示するピークの質量範囲に少し余白）
+  const masses = peaks.map(p => p.mass);
+  let minM = Math.min(...masses), maxM = Math.max(...masses);
+  if (maxM - minM < 1) { minM -= 1; maxM += 1; }
+  const spanM = maxM - minM;
+  const mx = m => padL + ((m - minM) / spanM) * plotW;
+  const hy = rel => padT + plotH - (rel / 100) * plotH;
+
+  // Y グリッド（0,25,50,75,100%）
+  ctx.strokeStyle = COL.grid;
+  ctx.fillStyle = COL.text;
+  ctx.lineWidth = 1;
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (let r = 0; r <= 100; r += 25) {
+    const y = hy(r);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(cssW - padR, y); ctx.stroke();
+    ctx.fillText(r + "%", padL - 6, y);
+  }
+
+  // 棒（各ピーク）
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  const barW = Math.max(2, Math.min(10, plotW / peaks.length * 0.5));
+  for (const pk of peaks) {
+    const x = mx(pk.mass);
+    const y = hy(pk.rel);
+    ctx.fillStyle = COL.bar;
+    ctx.fillRect(x - barW / 2, y, barW, padT + plotH - y);
+    // 目立つピークにだけ相対強度ラベル
+    if (pk.rel >= 5) {
+      ctx.fillStyle = COL.label;
+      ctx.fillText(Math.round(pk.rel) + "", x, y - 2);
+    }
+  }
+
+  // X 軸
+  ctx.strokeStyle = COL.axis;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT + plotH);
+  ctx.lineTo(cssW - padR, padT + plotH);
+  ctx.stroke();
+
+  // X 目盛り（両端＋中央付近の整数質量）
+  ctx.fillStyle = COL.text;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.font = "11px system-ui, sans-serif";
+  const ticks = [minM, (minM + maxM) / 2, maxM].map(Math.round);
+  const seen = new Set();
+  for (const t of ticks) {
+    if (seen.has(t)) continue; seen.add(t);
+    ctx.fillText(String(t), Math.max(padL, Math.min(cssW - padR, mx(t))), padT + plotH + 6);
+  }
+  ctx.fillText("m/z", cssW - padR, padT + plotH + 18);
+}
+
+// ダークモード切替・ウィンドウ幅変更に追従して再描画
+if (window.matchMedia) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onModeChange = () => {
+    const $panel = document.getElementById("isotopePanel");
+    if ($panel && !$panel.hidden) renderIsotopePanel($panel);
+  };
+  if (mq.addEventListener) mq.addEventListener("change", onModeChange);
+  else if (mq.addListener) mq.addListener(onModeChange);
+}
+window.addEventListener("resize", () => {
+  clearTimeout(isotopeRedrawTimer);
+  isotopeRedrawTimer = setTimeout(() => {
+    const $panel = document.getElementById("isotopePanel");
+    if ($panel && !$panel.hidden) {
+      const canvas = $panel.querySelector("canvas");
+      if (canvas && lastResult) {
+        try { drawIsotopeChart(canvas, isotopePattern(lastResult.counts).peaks); } catch (e) {}
+      }
+    }
+  }, 200);
+});
+
+// --- テンキー ---
+// 初期ピン留め（デフォルト）
+const DEFAULT_PINS = ["H", "C", "N", "O"];
+
+// pinnedHistory: ピン留めされた要素
+// recentHistory: 通常の履歴（最大9件）
+let pinnedHistory = [];
+let recentHistory = [];
+
+// =====================================================================
+// localStorageストア — 単一キーに集約、スキーマバージョン管理
+// スキーマ v1:
+//   { version: 1,
+//     pinnedHistory: string[],
+//     recentHistory: string[],
+//     activePanel: "periodic" | "numpad",
+//     presets: string[] }
+// =====================================================================
+const STORE_KEY    = "mwcalc_store";
+const STORE_VER    = 1;
+// 旧キー（v0 相当）
+const LEGACY_KEYS  = [
+  "mwcalc_pinned_history", "mwcalc_recent_history",
+  "mwcalc_active_panel",   "mwcalc_presets",
+];
+const isValidSymbol  = s => typeof s === "string" && /^[A-Z][a-z]{0,2}$/.test(s);
+// プリセット文字列の検証。
+// 文字種ホワイトリスト方式：化学式で使われ得る文字のみを許容することで、
+// localStorageの直接書き換え等によるXSS試行などを防ぐ（深層防御）。
+// 許容文字: 英字、半角数字、下付き数字(₀-₉)、全角数字(０-９)、各種括弧、
+//           中点(·・•⋅×)、+ 記号、空白文字。
+const VALID_PRESET_REGEX = /^[A-Za-z0-9₀-₉０-９()[\]{}（）〔〕｛｝·・•⋅×+\s]+$/;
+const isValidPreset  = s => typeof s === "string"
+  && s.length > 0 && s.length <= 200
+  && VALID_PRESET_REGEX.test(s);
+
+/** ストア全体を読み込み、変数に反映する */
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw !== null) {
+      // 新形式
+      const data = JSON.parse(raw);
+      if (data && data.version === STORE_VER) {
+        pinnedHistory   = Array.isArray(data.pinnedHistory)
+          ? data.pinnedHistory.filter(isValidSymbol).slice(0, 30)
+          : [...DEFAULT_PINS];
+        if (pinnedHistory.length === 0) pinnedHistory = [...DEFAULT_PINS];
+        recentHistory   = Array.isArray(data.recentHistory)
+          ? data.recentHistory.filter(isValidSymbol).slice(0, 9)
+          : [];
+        presetMolecules = Array.isArray(data.presets)
+          ? data.presets.filter(isValidPreset).slice(0, PRESET_MAX)
+          : [...DEFAULT_PRESETS];
+        if (data.activePanel === "numpad")
+          sessionStorage.setItem("mwcalc_show_numpad", "true");
+        return; // 正常読み込み完了
+      }
+    }
+
+    // --- 旧キーからのマイグレーション ---
+    const legacyPinned  = localStorage.getItem("mwcalc_pinned_history");
+    const legacyRecent  = localStorage.getItem("mwcalc_recent_history");
+    const legacyPanel   = localStorage.getItem("mwcalc_active_panel");
+    const legacyPresets = localStorage.getItem("mwcalc_presets");
+    const hasLegacy = legacyPinned || legacyRecent || legacyPanel || legacyPresets;
+
+    if (hasLegacy) {
+      // 旧データを読み込んで変数に反映
+      if (legacyPinned) {
+        const p = JSON.parse(legacyPinned);
+        pinnedHistory = Array.isArray(p) ? p.filter(isValidSymbol).slice(0, 30) : [...DEFAULT_PINS];
+        if (pinnedHistory.length === 0) pinnedHistory = [...DEFAULT_PINS];
+      } else {
+        pinnedHistory = [...DEFAULT_PINS];
+      }
+      if (legacyRecent) {
+        const r = JSON.parse(legacyRecent);
+        recentHistory = Array.isArray(r) ? r.filter(isValidSymbol).slice(0, 9) : [];
+      }
+      if (legacyPresets) {
+        const pr = JSON.parse(legacyPresets);
+        presetMolecules = Array.isArray(pr) ? pr.filter(isValidPreset).slice(0, PRESET_MAX) : [...DEFAULT_PRESETS];
+      } else {
+        presetMolecules = [...DEFAULT_PRESETS];
+      }
+      if (legacyPanel === "numpad")
+        sessionStorage.setItem("mwcalc_show_numpad", "true");
+      // 新形式で保存しなおし、旧キーを削除
+      saveStore();
+      LEGACY_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
+      console.log("[mwcalc] ストレージをv1形式にマイグレーションしました");
+    } else {
+      // 初回起動
+      pinnedHistory   = [...DEFAULT_PINS];
+      recentHistory   = [];
+      presetMolecules = [...DEFAULT_PRESETS];
+      saveStore();
+    }
+  } catch (e) {
+    console.error("[mwcalc] loadStore error:", e);
+    pinnedHistory   = [...DEFAULT_PINS];
+    recentHistory   = [];
+    presetMolecules = [...DEFAULT_PRESETS];
+  }
+}
+
+/** 変数の状態をストアに書き込む */
+function saveStore(activePanel) {
+  try {
+    // activePanel が省略された場合（saveHistory/savePresets 互換呼び出し時）は
+    // 既存ストアのパネル状態を引き継ぐ。
+    // 理由: 履歴・定型句の保存のたびにパネル状態を "periodic" にリセットしないため。
+    let panel = activePanel;
+    if (panel === undefined) {
+      try {
+        const cur = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+        panel = cur.activePanel || "periodic";
+      } catch(e) { panel = "periodic"; }
+    }
+    const data = {
+      version:       STORE_VER,
+      pinnedHistory: pinnedHistory.filter(isValidSymbol).slice(0, 30),
+      recentHistory: recentHistory.filter(isValidSymbol).slice(0, 9),
+      activePanel:   panel,
+      presets:       presetMolecules.filter(isValidPreset).slice(0, PRESET_MAX),
+    };
+    localStorage.setItem(STORE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error("[mwcalc] saveStore error:", e);
+  }
+}
+
+// 後方互換のための別名（既存呼び出し箇所をそのまま動かす）
+function loadHistory()  { /* loadStore() でまとめて処理 */ }
+function saveHistory()  { saveStore(); }
+function loadPresets()  { /* loadStore() でまとめて処理 */ }
+function savePresets()  { saveStore(); }
+
+function togglePin(sym) {
+  const pinnedIdx = pinnedHistory.indexOf(sym);
+  const recentIdx = recentHistory.indexOf(sym);
+
+  if (pinnedIdx >= 0) {
+    // ピン留め解除 → 通常履歴の先頭へ
+    pinnedHistory.splice(pinnedIdx, 1);
+    if (recentIdx < 0) {
+      recentHistory.unshift(sym);
+      if (recentHistory.length > 9) recentHistory.pop();    }
+  } else {
+    // ピン留め → 通常履歴から除去
+    if (recentIdx >= 0) recentHistory.splice(recentIdx, 1);
+    pinnedHistory.push(sym);
+  }
+
+  saveHistory();
+  if (numpadMode === "symbol") renderNumpad();
+}
+
+function updateHistory(sym) {
+  const pinnedIdx = pinnedHistory.indexOf(sym);
+  const recentIdx = recentHistory.indexOf(sym);
+
+  if (pinnedIdx >= 0) {
+    // ピン留め済み → 順位は変えない
+    return;
+  } else {
+    // 通常履歴に追加
+    if (recentIdx >= 0) recentHistory.splice(recentIdx, 1);
+    recentHistory.unshift(sym);
+    if (recentHistory.length > 9) recentHistory.pop();
+  }
+
+  saveHistory();
+  if (numpadMode === "symbol") renderNumpad();
+}
+
+// テンキーモード: "symbol" | "digit"
+let numpadMode = "symbol";
+
+// カーソル位置を安全に取得するヘルパー。
+// 一部のモバイルブラウザでは input がフォーカスを失うと
+// selectionStart / selectionEnd が null を返すことがあるため、
+// その場合は値の末尾をフォールバックとして使用する。
+function getSelection() {
+  const len = $input.value.length;
+  const start = $input.selectionStart;
+  const end = $input.selectionEnd;
+  return {
+    start: (typeof start === "number") ? start : len,
+    end: (typeof end === "number") ? end : len,
+  };
+}
+
+// 周期表またはテンキーから元素を挿入する。
+// 通常の insertText と異なり、以下の2点を特別処理する:
+//   1. カーソル直後に数字が続く場合はその数字の末尾に移動してから挿入
+//      → "H2O" の H と 2 の間にカーソルがある状態で H を押すと H3O になる
+//   2. カーソル直前が同じ元素（数字付き可）なら数字を+1する
+//      → "H" の後で H を押すと H2、H2 の後で H を押すと H3 になる
+//      → 数字のない場合は 1 扱いとする
+function insertElement(sym) {
+  // 妥当な元素記号のみ受け付ける
+  if (typeof sym !== "string" || !/^[A-Z][a-z]{0,2}$/.test(sym)) return;
+  const { start, end } = getSelection();
+  const originalValue = $input.value;
+
+  // 選択範囲がある場合は削除してからカーソル位置を決める
+  let baseValue = originalValue;
+  let basePos = start;
+  if (start !== end) {
+    baseValue = originalValue.substring(0, start) + originalValue.substring(end);
+    basePos = start;
+  }
+
+  const normalized = normalize(baseValue);
+  let normalizedPos = Math.min(basePos, normalized.length);
+  // カーソルが数字の途中または数字の直前にある場合、その数字列の末尾まで進める。
+  // 理由: "H2" の 2 の前にカーソルがある状態で O を押したとき "HO2" でなく "H2O" にするため。
+  const afterCursor = normalized.substring(normalizedPos);
+  const numberMatch = afterCursor.match(/^(\d+)/);
+  if (numberMatch) normalizedPos += numberMatch[1].length;
+
+  const before = normalized.substring(0, normalizedPos);
+  const lastElemMatch = before.match(/([A-Z][a-z]?)(\d*)$/);
+
+  if (lastElemMatch && lastElemMatch[1] === sym) {
+    const lastElem = lastElemMatch[1];
+    const lastNum = lastElemMatch[2] ? parseInt(lastElemMatch[2]) : 1;
+    const newNum = lastNum + 1;
+    const withoutLast = before.substring(0, before.length - lastElemMatch[0].length);
+    const after = normalized.substring(normalizedPos);
+    $input.value = withoutLast + lastElem + newNum + after;
+    const newPos = withoutLast.length + lastElem.length + String(newNum).length;
+    $input.setSelectionRange(newPos, newPos);
+  } else {
+    const after = normalized.substring(normalizedPos);
+    $input.value = before + sym + after;
+    const newPos = normalizedPos + sym.length;
+    $input.setSelectionRange(newPos, newPos);
+  }
+
+  render();
+  $input.focus();
+  updateHistory(sym);
+}
+
+function insertText(text) {
+  const { start, end } = getSelection();
+  const v = $input.value;
+  $input.value = v.substring(0, start) + text + v.substring(end);
+  const newPos = start + text.length;
+  $input.setSelectionRange(newPos, newPos);
+  render();
+  $input.focus();
+}
+
+function doBackspace() {
+  const { start, end } = getSelection();
+  if (start !== end) {
+    $input.value = $input.value.substring(0, start) + $input.value.substring(end);
+    $input.setSelectionRange(start, start);
+  } else if (start > 0) {
+    $input.value = $input.value.substring(0, start - 1) + $input.value.substring(start);
+    $input.setSelectionRange(start - 1, start - 1);
+  }
+  render();
+  $input.focus();
+}
+
+function moveCursorRight() {
+  // 選択がある場合は選択末尾にカーソルを置くだけ（削除しない）
+  const { start, end } = getSelection();
+  if (start !== end) {
+    $input.setSelectionRange(end, end);
+  } else {
+    const pos = Math.min(end + 1, $input.value.length);
+    $input.setSelectionRange(pos, pos);
+  }
+  $input.focus();
+}
+
+function moveCursorLeft() {
+  // 選択がある場合は選択開始位置にカーソルを置くだけ（削除しない）
+  const { start, end } = getSelection();
+  if (start !== end) {
+    $input.setSelectionRange(start, start);
+  } else {
+    const pos = Math.max(start - 1, 0);
+    $input.setSelectionRange(pos, pos);
+  }
+  $input.focus();
+}
+
+// --- 登録分子式 ---
+const PRESET_MAX = 20;
+
+// 文字列を印刷形式に変換（失敗時は元の文字列を返す）
+function toPretty(s) {
+  try {
+    return prettyPrint(tokenize(normalize(s)));
+  } catch(e) {
+    return s;
+  }
+}
+
+const DEFAULT_PRESETS = [
+  "H2O", "NaCl", "CO2", "HCl",
+  "NaOH", "H2SO4", "C2H5OH", "C6H12O6", "CuSO4·5H2O",
+  "PtCl2(NH3)2", "K4[Fe(CN)6]", 
+].map(toPretty);
+let presetMolecules = [];
+
+function showSettingsMenu(buttonEl) {
+  const $menu = document.getElementById("settingsMenu");
+  // 他のメニューが開いていたら閉じる
+  document.getElementById("historyMenu").classList.remove("visible");
+  $menu.innerHTML = "";
+
+  // --- 現在の分子を追加 ---
+  const currentVal = toPretty($input.value.trim().slice(0, 200));
+  if (currentVal && !presetMolecules.includes(currentVal)) {
+    if (presetMolecules.length < PRESET_MAX) {
+      const $add = document.createElement("div");
+      $add.className = "menu-item";
+      $add.textContent = `「${currentVal}」を登録分子式に追加`;
+      $add.addEventListener("click", () => {
+        presetMolecules.push(currentVal);
+        savePresets();
+        $menu.classList.remove("visible");
+      });
+      $menu.appendChild($add);
+    }
+  }
+
+  // --- 区切り線（登録分子式がある場合） ---
+  if (presetMolecules.length > 0) {
+    const $sep = document.createElement("div");
+    $sep.style.cssText = "border-top: 1px solid #ddd; margin: 2px 0;";
+    $menu.appendChild($sep);
+
+    // --- 登録分子式一覧 ---
+    presetMolecules.forEach((mol, idx) => {
+      const $row = document.createElement("div");
+      $row.className = "menu-item menu-item-preset";
+      $row.style.cssText = "display:flex; align-items:center; gap:0.4em; padding: 0.4em 0.5em 0.4em 1em;";
+
+      const $label = document.createElement("span");
+      $label.textContent = mol;
+      $label.style.cssText = "flex:1; font-family:ui-monospace,monospace; cursor:pointer;";
+      $label.addEventListener("click", () => {
+        insertText(normalize(mol));
+        $menu.classList.remove("visible");
+      });
+
+      const $del = document.createElement("span");
+      $del.textContent = "✕";
+      $del.title = "削除";
+      $del.style.cssText = "color:#aaa; cursor:pointer; font-size:0.85em; padding:0 0.3em; flex-shrink:0;";
+      $del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        presetMolecules.splice(idx, 1);
+        savePresets();
+        $menu.classList.remove("visible");
+      });
+
+      $row.appendChild($label);
+      $row.appendChild($del);
+      $menu.appendChild($row);
+    });
+  }
+
+  // --- 区切り線 ---
+  const $sep2 = document.createElement("div");
+  $sep2.style.cssText = "border-top: 1px solid #ddd; margin: 2px 0;";
+  $menu.appendChild($sep2);
+
+  // --- 登録分子式の初期化 ---
+  const $reset = document.createElement("div");
+  $reset.className = "menu-item danger";
+  $reset.textContent = "登録分子式を初期化";
+  $reset.addEventListener("click", () => {
+    if (confirm("登録分子式をデフォルトに戻します。よろしいですか？")) {
+      presetMolecules = [...DEFAULT_PRESETS];
+      savePresets();
+    }
+    $menu.classList.remove("visible");
+  });
+  $menu.appendChild($reset);
+
+  $menu.classList.add("visible");
+  const rect = buttonEl.getBoundingClientRect();
+  $menu.style.top = (rect.bottom + 5) + "px";
+  $menu.style.left = rect.left + "px";
+
+  function closeMenu(e) {
+    if (!$menu.contains(e.target)) {
+      $menu.classList.remove("visible");
+      document.removeEventListener("click", closeMenu);
+    }
+  }
+  document.addEventListener("click", closeMenu);
+}
+
+function showGroupMenu(label, cellEl, anchorRect) {
+  const $menu = document.getElementById("groupMenu");
+  document.getElementById("historyMenu").classList.remove("visible");
+  document.getElementById("settingsMenu").classList.remove("visible");
+  document.removeEventListener("click", onDocClickGroupMenu);
+
+  $menu.innerHTML = "";
+
+  const ranges = { "57-71": [57, 71], "89-103": [89, 103] };
+  const range = ranges[label];
+  if (!range) return;
+
+  const elements = PERIODIC_DATA.filter(e => e.z >= range[0] && e.z <= range[1]);
+
+  // 周期表メニューの幅（anchorRectがある場合）またはテンキー幅(420px)に収める
+  const $table = document.createElement("table");
+  $table.className = "group-menu-table";
+  const maxWidth = anchorRect ? Math.round(anchorRect.width) - 6 : 414;
+  $table.style.width = maxWidth + "px";
+
+  const $tr = document.createElement("tr");
+  elements.forEach(elem => {
+    const $td = document.createElement("td");
+    $td.className = "group-menu-item";
+    appendElementCellContent($td, elem, "span");
+    $td.title = `${elem.sym}（原子番号${elem.z}）`;
+    $td.setAttribute("role", "button");
+    $td.setAttribute("tabindex", "0");
+    $td.setAttribute("aria-label", `${elem.sym}（原子番号${elem.z}）を挿入`);
+    $td.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.removeEventListener("click", onDocClickGroupMenu);
+      $menu.classList.remove("visible");
+      insertElement(elem.sym);
+    });
+    $td.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        document.removeEventListener("click", onDocClickGroupMenu);
+        $menu.classList.remove("visible");
+        insertElement(elem.sym);
+      }
+    });
+    $tr.appendChild($td);
+  });
+
+  $table.appendChild($tr);
+  $menu.appendChild($table);
+
+  // anchorRect: 周期表メニューからの呼び出し時は周期表メニューの bottom を基準に使う
+  // cellEl: 周期表上のラベルセルからの呼び出し時は cellEl の位置を使う
+  const baseRect = anchorRect || cellEl.getBoundingClientRect();
+
+  $menu.style.top  = "0px";
+  $menu.style.left = baseRect.left + "px";
+  $menu.classList.add("visible");
+
+  requestAnimationFrame(() => {
+    const mRect = $menu.getBoundingClientRect();
+    // anchorRect が渡された場合（周期表メニュー経由）: anchorRect.bottom のすぐ上
+    // 通常（周期表セルクリック）: セルの下か上
+    if (anchorRect) {
+      $menu.style.top = (anchorRect.bottom - mRect.height - 5) + "px";
+    } else if (baseRect.bottom + mRect.height + 8 < window.innerHeight) {
+      $menu.style.top = (baseRect.bottom + 5) + "px";
+    } else {
+      $menu.style.top = (baseRect.top - mRect.height - 5) + "px";
+    }
+    // 右端補正
+    if (parseFloat($menu.style.left) + mRect.width > window.innerWidth - 8) {
+      $menu.style.left = (window.innerWidth - mRect.width - 8) + "px";
+    }
+  });
+
+  setTimeout(() => {
+    document.addEventListener("click", onDocClickGroupMenu);
+  }, 0);
+}
+
+function onDocClickGroupMenu(e) {
+  const $menu = document.getElementById("groupMenu");
+  if (!$menu.contains(e.target)) {
+    $menu.classList.remove("visible");
+    document.removeEventListener("click", onDocClickGroupMenu);
+  }
+}
+
+// --- 周期表グリッドメニュー（テンキーから呼び出し） ---
+function showPeriodicMenu(buttonEl) {
+  const $menu = document.getElementById("periodicMenu");
+  document.removeEventListener("click", onDocClickPeriodicMenu);
+  $menu.innerHTML = "";
+
+  // 周期表のレイアウト（行・列構造）を導出
+  const periodData = getPeriodicTableLayout();
+
+  const $table = document.createElement("table");
+  $table.className = "periodic-menu-table";
+
+  periodData.forEach(row => {
+    const $tr = document.createElement("tr");
+    row.forEach(elem => {
+      const $td = document.createElement("td");
+      if (elem === null) {
+        $td.className = "periodic-menu-cell empty-cell";
+        $td.setAttribute("aria-hidden", "true");
+      } else if (elem.label) {
+        $td.className = "periodic-menu-cell label-cell";
+        $td.textContent = elem.label;
+        $td.setAttribute("role", "button");
+        $td.addEventListener("click", (e) => {
+          e.stopPropagation();
+          document.removeEventListener("click", onDocClickPeriodicMenu);
+          // 周期表メニュー自体の矩形を anchorRect として渡す
+          const menuRect = $menu.getBoundingClientRect();
+          $menu.classList.remove("visible");
+          showGroupMenu(elem.label, $td, menuRect);
+        });
+      } else {
+        const isLanthanide = elem.z >= 57 && elem.z <= 71;
+        const isActinide   = elem.z >= 89 && elem.z <= 103;
+        $td.className = "periodic-menu-cell" +
+          (isLanthanide ? " lanthanide" : isActinide ? " actinide" : "");
+        appendElementCellContent($td, elem, "span");
+        $td.title = `${elem.sym}（${elem.z}）`;
+        $td.setAttribute("role", "button");
+        $td.setAttribute("aria-label", `${elem.sym}（原子番号${elem.z}）を挿入`);
+        $td.addEventListener("click", (e) => {
+          e.stopPropagation();
+          document.removeEventListener("click", onDocClickPeriodicMenu);
+          $menu.classList.remove("visible");
+          insertElement(elem.sym);
+        });
+      }
+      $tr.appendChild($td);
+    });
+    $table.appendChild($tr);
+  });
+
+  $menu.appendChild($table);
+
+  // テンキーボタンの真上に表示
+  const rect = buttonEl.getBoundingClientRect();
+  $menu.style.left = rect.left + "px";
+  $menu.style.top  = "0px"; // 仮置き
+  $menu.classList.add("visible");
+
+  requestAnimationFrame(() => {
+    const mRect = $menu.getBoundingClientRect();
+    // ボタンの上に出すか下に出すか
+    if (rect.top - mRect.height - 8 > 0) {
+      $menu.style.top = (rect.top - mRect.height - 5) + "px";
+    } else {
+      $menu.style.top = (rect.bottom + 5) + "px";
+    }
+    // 右端補正
+    if (parseFloat($menu.style.left) + mRect.width > window.innerWidth - 8) {
+      $menu.style.left = (window.innerWidth - mRect.width - 8) + "px";
+    }
+  });
+
+  setTimeout(() => {
+    document.addEventListener("click", onDocClickPeriodicMenu);
+  }, 0);
+}
+
+function onDocClickPeriodicMenu(e) {
+  const $menu = document.getElementById("periodicMenu");
+  if (!$menu.contains(e.target)) {
+    $menu.classList.remove("visible");
+    document.removeEventListener("click", onDocClickPeriodicMenu);
+  }
+}
+
+// 周期表データ（グループメニューで使用 / Single Source of Truth）
+const PERIODIC_DATA = [
+  {z: 1, sym: "H"}, {z: 2, sym: "He"},
+  {z: 3, sym: "Li"}, {z: 4, sym: "Be"}, {z: 5, sym: "B"}, {z: 6, sym: "C"}, {z: 7, sym: "N"}, {z: 8, sym: "O"}, {z: 9, sym: "F"}, {z: 10, sym: "Ne"},
+  {z: 11, sym: "Na"}, {z: 12, sym: "Mg"}, {z: 13, sym: "Al"}, {z: 14, sym: "Si"}, {z: 15, sym: "P"}, {z: 16, sym: "S"}, {z: 17, sym: "Cl"}, {z: 18, sym: "Ar"},
+  {z: 19, sym: "K"}, {z: 20, sym: "Ca"}, {z: 21, sym: "Sc"}, {z: 22, sym: "Ti"}, {z: 23, sym: "V"}, {z: 24, sym: "Cr"}, {z: 25, sym: "Mn"}, {z: 26, sym: "Fe"}, {z: 27, sym: "Co"}, {z: 28, sym: "Ni"}, {z: 29, sym: "Cu"}, {z: 30, sym: "Zn"}, {z: 31, sym: "Ga"}, {z: 32, sym: "Ge"}, {z: 33, sym: "As"}, {z: 34, sym: "Se"}, {z: 35, sym: "Br"}, {z: 36, sym: "Kr"},
+  {z: 37, sym: "Rb"}, {z: 38, sym: "Sr"}, {z: 39, sym: "Y"}, {z: 40, sym: "Zr"}, {z: 41, sym: "Nb"}, {z: 42, sym: "Mo"}, {z: 43, sym: "Tc"}, {z: 44, sym: "Ru"}, {z: 45, sym: "Rh"}, {z: 46, sym: "Pd"}, {z: 47, sym: "Ag"}, {z: 48, sym: "Cd"}, {z: 49, sym: "In"}, {z: 50, sym: "Sn"}, {z: 51, sym: "Sb"}, {z: 52, sym: "Te"}, {z: 53, sym: "I"}, {z: 54, sym: "Xe"},
+  {z: 55, sym: "Cs"}, {z: 56, sym: "Ba"}, {z: 57, sym: "La"}, {z: 58, sym: "Ce"}, {z: 59, sym: "Pr"}, {z: 60, sym: "Nd"}, {z: 61, sym: "Pm"}, {z: 62, sym: "Sm"}, {z: 63, sym: "Eu"}, {z: 64, sym: "Gd"}, {z: 65, sym: "Tb"}, {z: 66, sym: "Dy"}, {z: 67, sym: "Ho"}, {z: 68, sym: "Er"}, {z: 69, sym: "Tm"}, {z: 70, sym: "Yb"}, {z: 71, sym: "Lu"}, {z: 72, sym: "Hf"}, {z: 73, sym: "Ta"}, {z: 74, sym: "W"}, {z: 75, sym: "Re"}, {z: 76, sym: "Os"}, {z: 77, sym: "Ir"}, {z: 78, sym: "Pt"}, {z: 79, sym: "Au"}, {z: 80, sym: "Hg"}, {z: 81, sym: "Tl"}, {z: 82, sym: "Pb"}, {z: 83, sym: "Bi"}, {z: 84, sym: "Po"}, {z: 85, sym: "At"}, {z: 86, sym: "Rn"},
+  {z: 87, sym: "Fr"}, {z: 88, sym: "Ra"}, {z: 89, sym: "Ac"}, {z: 90, sym: "Th"}, {z: 91, sym: "Pa"}, {z: 92, sym: "U"}, {z: 93, sym: "Np"}, {z: 94, sym: "Pu"}, {z: 95, sym: "Am"}, {z: 96, sym: "Cm"}, {z: 97, sym: "Bk"}, {z: 98, sym: "Cf"}, {z: 99, sym: "Es"}, {z: 100, sym: "Fm"}, {z: 101, sym: "Md"}, {z: 102, sym: "No"}, {z: 103, sym: "Lr"}, {z: 104, sym: "Rf"}, {z: 105, sym: "Db"}, {z: 106, sym: "Sg"}, {z: 107, sym: "Bh"}, {z: 108, sym: "Hs"}, {z: 109, sym: "Mt"}, {z: 110, sym: "Ds"}, {z: 111, sym: "Rg"}, {z: 112, sym: "Cn"}, {z: 113, sym: "Nh"}, {z: 114, sym: "Fl"}, {z: 115, sym: "Mc"}, {z: 116, sym: "Lv"}, {z: 117, sym: "Ts"}, {z: 118, sym: "Og"}
+];
+
+// 周期表の行・列レイアウトを PERIODIC_DATA から導出する。
+// 周期表は 7行×18列 のグリッド。空セルは null、ランタノイド/アクチノイド束は
+// {label: "57-71"} / {label: "89-103"} のラベルセル。
+// この関数は showPeriodicMenu と renderPeriodicTable の両方から呼ばれる。
+function getPeriodicTableLayout() {
+  // 各原子番号の (周期, 族) 配置を定義（IUPAC 18族表記）
+  // 値は [period (1-7), group (1-18)]、period/group は 1-indexed。
+  // ランタノイド (57-71) はラベルセル "57-71" に置き換えて Period 6 / Group 3 に表示、
+  // アクチノイド (89-103) も同様に "89-103" として Period 7 / Group 3 に表示する。
+  const placement = {};
+  // Period 1
+  placement[1]  = [1, 1];   placement[2]  = [1, 18];
+  // Period 2
+  placement[3]  = [2, 1];   placement[4]  = [2, 2];
+  for (let z = 5; z <= 10; z++) placement[z] = [2, z + 8];  // B-Ne → 13-18
+  // Period 3
+  placement[11] = [3, 1];   placement[12] = [3, 2];
+  for (let z = 13; z <= 18; z++) placement[z] = [3, z];     // Al-Ar → 13-18
+  // Period 4: 19-36 をそのまま 1-18 に
+  for (let z = 19; z <= 36; z++) placement[z] = [4, z - 18];
+  // Period 5: 37-54 を 1-18 に
+  for (let z = 37; z <= 54; z++) placement[z] = [5, z - 36];
+  // Period 6: 55,56 → 1,2 / 57-71 はラベル化 / 72-86 → 4-18
+  placement[55] = [6, 1];   placement[56] = [6, 2];
+  // 57-71 はラベルセルで処理するためここでは配置しない
+  for (let z = 72; z <= 86; z++) placement[z] = [6, z - 68]; // Hf-Rn → 4-18
+  // Period 7: 87,88 → 1,2 / 89-103 はラベル化 / 104-118 → 4-18
+  placement[87] = [7, 1];   placement[88] = [7, 2];
+  for (let z = 104; z <= 118; z++) placement[z] = [7, z - 100]; // Rf-Og → 4-18
+
+  // 7行×18列のグリッドを null で初期化
+  const grid = Array.from({length: 7}, () => Array(18).fill(null));
+
+  // PERIODIC_DATA の各元素を grid に配置
+  for (const elem of PERIODIC_DATA) {
+    const pos = placement[elem.z];
+    if (pos) {
+      grid[pos[0] - 1][pos[1] - 1] = elem;
+    }
+    // ランタノイド・アクチノイドは grid に配置しない（ラベルセルで代表）
+  }
+
+  // ラベルセルを Period 6/7 の Group 3 に配置
+  grid[5][2] = {label: "57-71"};
+  grid[6][2] = {label: "89-103"};
+
+  return grid;
+}
+
+// 元素セルの中身（原子番号 + 元素記号）を <td> に安全に追加するヘルパー。
+// innerHTML を使わず textContent で要素を作るため、データ由来が外部入力に
+// 変わってもXSSにならない（防御的設計）。
+//   variant: "div"（周期表本体用、divベース） | "span"（メニュー用、spanベース）
+function appendElementCellContent($td, elem, variant) {
+  const tag = variant === "div" ? "div" : "span";
+  const $num = document.createElement(tag);
+  $num.className = "element-number";
+  $num.textContent = elem.z;
+  const $sym = document.createElement(tag);
+  $sym.className = "element-symbol";
+  $sym.textContent = elem.sym;
+  $td.appendChild($num);
+  $td.appendChild($sym);
+}
+
+function showOverflowMenu(buttonEl) {
+  const $menu = document.getElementById("overflowMenu");
+  document.getElementById("historyMenu").classList.remove("visible");
+  document.getElementById("settingsMenu").classList.remove("visible");
+  $menu.innerHTML = "";
+
+  // --- 初期設定に戻す ---
+  const $reset = document.createElement("div");
+  $reset.className = "menu-item danger";
+  $reset.textContent = "初期設定に戻す";
+  $reset.addEventListener("click", () => {
+    if (confirm("すべての設定と履歴を初期化します。よろしいですか？")) {
+      pinnedHistory   = [...DEFAULT_PINS];
+      recentHistory   = [];
+      presetMolecules = [...DEFAULT_PRESETS];
+      numpadMode = "symbol";
+      try { localStorage.removeItem(STORE_KEY); } catch(e) {}
+      LEGACY_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
+      try { sessionStorage.removeItem("mwcalc_show_numpad"); } catch(e) {}
+      saveStore("periodic");
+      $input.value = "";
+      render();
+      renderNumpad();
+      document.getElementById("tabPeriodic").classList.add("active");
+      document.getElementById("tabNumpad").classList.remove("active");
+      document.getElementById("panelPeriodic").style.display = "";
+      document.getElementById("panelNumpad").classList.remove("visible");
+    }
+    $menu.classList.remove("visible");
+  });
+  $menu.appendChild($reset);
+
+  $menu.classList.add("visible");
+  const rect = buttonEl.getBoundingClientRect();
+  $menu.style.top  = (rect.bottom + 5) + "px";
+  $menu.style.left = rect.left + "px";
+
+  // 右端補正
+  requestAnimationFrame(() => {
+    const mRect = $menu.getBoundingClientRect();
+    if (mRect.right > window.innerWidth - 8) {
+      $menu.style.left = (window.innerWidth - mRect.width - 8) + "px";
+    }
+  });
+
+  function closeMenu(e) {
+    if (!$menu.contains(e.target)) {
+      $menu.classList.remove("visible");
+      document.removeEventListener("click", closeMenu);
+    }
+  }
+  setTimeout(() => document.addEventListener("click", closeMenu), 0);
+}
+
+function showHistoryMenu(buttonEl) {
+  const $menu = document.getElementById("historyMenu");
+  document.getElementById("settingsMenu").classList.remove("visible");
+  $menu.innerHTML = "";
+
+  // 最近使用履歴のみを表示（ピン留めを含めない）
+  // 最近使用順なので、最初の要素ほど新しい
+  const displayHistory = recentHistory.slice(0, 50);  // 最大50件まで表示可能
+  
+  // グリッドコンテナを作成
+  const $grid = document.createElement("div");
+  $grid.className = "history-menu-grid";
+  
+  if (displayHistory.length === 0) {
+    const $empty = document.createElement("div");
+    $empty.className = "history-menu-empty";
+    $empty.textContent = "（履歴なし）";
+    $grid.appendChild($empty);
+  } else {
+    displayHistory.forEach(sym => {
+      const $item = document.createElement("div");
+      $item.className = "history-menu-item";
+      $item.textContent = sym;
+      $item.addEventListener("click", () => {
+        insertElement(sym);
+        $menu.classList.remove("visible");
+      });
+      $grid.appendChild($item);
+    });
+  }
+  
+  $menu.appendChild($grid);
+  $menu.classList.add("visible");
+  
+  // ボタン位置でメニューを表示
+  const rect = buttonEl.getBoundingClientRect();
+  $menu.style.top = (rect.bottom + 5) + "px";
+  $menu.style.left = rect.left + "px";
+
+  // 他の場所をクリックしたらメニューを閉じる
+  function closeMenu(e) {
+    if (!$menu.contains(e.target) && e.target !== buttonEl) {
+      $menu.classList.remove("visible");
+      document.removeEventListener("click", closeMenu);
+    }
+  }
+  document.addEventListener("click", closeMenu);
+}
+
+function renderNumpad() {
+  const $grid = document.getElementById("numpadGrid");
+  $grid.innerHTML = "";
+
+  if (numpadMode === "symbol") {
+    // ピン留め → 通常履歴の順で最大9つ表示
+    const displayedHistory = [...pinnedHistory, ...recentHistory].slice(0, 9);
+    const h = (i) => displayedHistory[i]
+      ? [displayedHistory[i], "elem", displayedHistory[i], pinnedHistory.includes(displayedHistory[i])]
+      : ["", "empty"];
+
+    const layout = [
+      ["☰", "menu"], h(0), h(1), h(2), ["BS", "bs"],
+      ["履歴", "history"], h(3), h(4), h(5), ["空白", "action-space"],
+      ["記/数", "mode"], h(6), h(7), h(8), ["→", "action-right"],
+      ["周期表", "goto-periodic"], ["(", "action-char", "("], ["·", "action-char", "·"], [")", "action-char", ")"], ["←", "action-left"],
+    ];
+
+    layout.forEach(([label, type, arg, isPinned]) => {
+      const $btn = document.createElement("button");
+      $btn.type = "button";
+      $btn.addEventListener("mousedown", () => $btn.blur());
+
+      if (type === "empty") {
+        $btn.className = "numpad-btn numpad-empty";
+      } else if (type === "menu") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          showSettingsMenu(e.target);
+        });
+      } else if (type === "elem") {
+        $btn.className = "numpad-btn numpad-elem" + (isPinned ? " numpad-pinned" : "");
+        $btn.textContent = label;
+        
+        // クリック：要素を挿入
+        $btn.addEventListener("click", () => insertElement(arg));
+        
+        // 長押し（touchstart → touchend 500ms以上）
+        let touchStart = 0;
+        $btn.addEventListener("touchstart", () => {
+          touchStart = Date.now();
+        });
+        $btn.addEventListener("touchend", (e) => {
+          const duration = Date.now() - touchStart;
+          if (duration >= 500) {
+            e.preventDefault();
+            togglePin(arg);
+          }
+        });
+        
+        // 右クリック：コンテキストメニュー表示
+        $btn.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          togglePin(arg);
+        });
+      } else if (type === "bs") {
+        $btn.className = "numpad-btn numpad-action numpad-bs";
+        $btn.textContent = label;
+        $btn.addEventListener("click", doBackspace);
+      } else if (type === "history") {
+        $btn.className = "numpad-btn numpad-action numpad-history";
+        $btn.textContent = label;
+        $btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          showHistoryMenu(e.target);
+        });
+      } else if (type === "action-space") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", () => insertText(" "));
+      } else if (type === "action-right") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", moveCursorRight);
+      } else if (type === "action-char") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", () => insertText(arg));
+      } else if (type === "action-left") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", moveCursorLeft);
+      } else if (type === "goto-periodic") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          showPeriodicMenu($btn);
+        });
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+      } else if (type === "mode") {
+        $btn.className = "numpad-btn numpad-mode";
+        $btn.textContent = label;
+        $btn.addEventListener("click", () => {
+          numpadMode = "digit";
+          renderNumpad();
+        });
+      }
+      $grid.appendChild($btn);
+    });
+
+  } else {
+    // 数字モード
+    const digits = [
+      ["☰", "menu"],
+      ["１", "digit", "1"],
+      ["２", "digit", "2"],
+      ["３", "digit", "3"],
+      ["BS", "bs"],
+
+      ["履歴", "history"],
+      ["４", "digit", "4"],
+      ["５", "digit", "5"],
+      ["６", "digit", "6"],
+      ["空白", "action-space"],
+
+      [numpadMode === "symbol" ? "記/数" : "数/記", "mode"],
+      ["７", "digit", "7"],
+      ["８", "digit", "8"],
+      ["９", "digit", "9"],
+      ["→", "action-right"],
+
+      ["周期表", "goto-periodic"],
+      ["(", "action-char", "("],
+      ["０", "digit", "0"],
+      [")", "action-char", ")"],
+      ["←", "action-left"],
+    ];
+
+    digits.forEach(([label, type, arg]) => {
+      const $btn = document.createElement("button");
+      $btn.type = "button";
+      $btn.addEventListener("mousedown", () => $btn.blur());
+      $btn.textContent = label;
+
+      if (type === "empty") {
+        $btn.className = "numpad-btn numpad-empty";
+      } else if (type === "menu") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          showSettingsMenu(e.target);
+        });
+      } else if (type === "digit") {
+        $btn.className = "numpad-btn numpad-digit";
+        $btn.addEventListener("click", () => insertText(arg));
+      } else if (type === "history") {
+        $btn.className = "numpad-btn numpad-action numpad-history";
+        $btn.textContent = label;
+        $btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          showHistoryMenu(e.target);
+        });
+      } else if (type === "bs") {
+        $btn.className = "numpad-btn numpad-action numpad-bs";
+        $btn.addEventListener("click", doBackspace);
+      } else if (type === "action-space") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.addEventListener("click", () => insertText(" "));
+      } else if (type === "action-right") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.addEventListener("click", moveCursorRight);
+      } else if (type === "action-left") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", moveCursorLeft);
+      } else if (type === "action-char") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", () => insertText(arg));
+      } else if (type === "goto-periodic") {
+        $btn.className = "numpad-btn numpad-action";
+        $btn.textContent = label;
+        $btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          showPeriodicMenu($btn);
+        });
+      } else if (type === "mode") {
+        $btn.className = "numpad-btn numpad-mode";
+        $btn.addEventListener("click", () => {
+          numpadMode = "symbol";
+          renderNumpad();
+        });
+      }
+      $grid.appendChild($btn);
+    });
+  }
+}
+
+// タブ切り替え
+function setupPanelTabs() {
+  const $tabP = document.getElementById("tabPeriodic");
+  const $tabN = document.getElementById("tabNumpad");
+  const $panelP = document.getElementById("panelPeriodic");
+  const $panelN = document.getElementById("panelNumpad");
+
+  const $tabs = document.querySelector(".input-panel-tabs");
+
+  function switchToNumpad() {
+    $tabN.classList.add("active");
+    $tabP.classList.remove("active");
+    $tabN.setAttribute("aria-pressed", "true");
+    $tabP.setAttribute("aria-pressed", "false");
+    $panelP.style.display = "none";
+    $panelN.classList.add("visible");
+    saveStore("numpad");
+  }
+
+  function switchToPeriodic() {
+    $tabP.classList.add("active");
+    $tabN.classList.remove("active");
+    $tabP.setAttribute("aria-pressed", "true");
+    $tabN.setAttribute("aria-pressed", "false");
+    $panelP.style.display = "";
+    $panelN.classList.remove("visible");
+    saveStore("periodic");
+  }
+
+  $tabP.addEventListener("click", switchToPeriodic);
+
+  // テンキータブのクリック: 既に active なら記号↔数字切り替え、未 active なら表示
+  $tabN.addEventListener("click", () => {
+    if ($tabN.classList.contains("active")) {
+      numpadMode = numpadMode === "symbol" ? "digit" : "symbol";
+      renderNumpad();
+    } else {
+      switchToNumpad();
+    }
+  });
+
+  // …タブのクリック
+  const $tabOverflow = document.getElementById("tabOverflow");
+  $tabOverflow.addEventListener("click", (e) => {
+    e.stopPropagation();
+    showOverflowMenu($tabOverflow);
+  });
+}
+
+// --- 周期表生成 ---
+function renderPeriodicTable() {
+  const periodData = getPeriodicTableLayout();
+
+  const $table = document.getElementById("periodicTable");
+  const $groupNumbers = document.getElementById("groupNumbers");
+  
+  // 族番号を表示（1-18）
+  for (let i = 1; i <= 18; i++) {
+    const $div = document.createElement("div");
+    $div.className = "group-number";
+    $div.textContent = String(i);
+    $groupNumbers.appendChild($div);
+  }
+  
+  for (let i = 0; i < periodData.length; i++) {
+    const $tr = document.createElement("tr");
+    
+    for (let j = 0; j < periodData[i].length; j++) {
+      const $td = document.createElement("td");
+      const elem = periodData[i][j];
+      
+      if (elem === null) {
+        $td.className = "element-cell empty";
+        $td.setAttribute("aria-hidden", "true");
+      } else if (elem.label) {
+        $td.className = "element-cell lanthanide";
+        const $label = document.createElement("span");
+        $label.className = "period-header";
+        $label.textContent = elem.label;
+        $td.appendChild($label);
+        $td.setAttribute("role", "button");
+        $td.setAttribute("tabindex", "0");
+        $td.setAttribute("aria-label", `${elem.label}のランタノイド/アクチノイドを選択`);
+        
+        $td.addEventListener("mousedown", () => $td.blur());
+        $td.addEventListener("click", () => {
+          showGroupMenu(elem.label, $td);
+        });
+        $td.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            showGroupMenu(elem.label, $td);
+          }
+        });
+      } else {
+        const isLanthanide = elem.z >= 57 && elem.z <= 71;
+        const isActinide = elem.z >= 89 && elem.z <= 103;
+        $td.className = "element-cell" + (isLanthanide ? " lanthanide" : isActinide ? " actinide" : "");
+        appendElementCellContent($td, elem, "div");
+        $td.title = `${elem.sym} (${elem.z})`;
+        $td.setAttribute("role", "button");
+        $td.setAttribute("tabindex", "0");
+        $td.setAttribute("aria-label", `${elem.sym}（原子番号${elem.z}）を挿入`);
+
+        // クリック時にカーソル位置に元素記号を挿入
+        $td.addEventListener("mousedown", () => $td.blur());
+        $td.addEventListener("click", () => {
+          insertElement(elem.sym);
+        });
+        // キーボード操作（Enter / Space）
+        $td.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            insertElement(elem.sym);
+          }
+        });
+      }
+      
+      $tr.appendChild($td);
+    }
+    
+    $table.appendChild($tr);
+  }
+}
+
+// 初期表示
+loadStore();
+renderPeriodicTable();
+setupPanelTabs();
+renderNumpad();
+loadFormulaFromUrl();  // 共有リンク (#f= / ?f=) からの化学式を反映
+render();
+
+// 保存されたパネル状態を復元
+if (sessionStorage.getItem("mwcalc_show_numpad") === "true") {
+  sessionStorage.removeItem("mwcalc_show_numpad");
+  const $tabN = document.getElementById("tabNumpad");
+  $tabN.click();
+}
+</script>
+</body>
+</html>
